@@ -1,0 +1,2 @@
+# StocksScanner
+AI Based StcokScanner
