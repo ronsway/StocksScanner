@@ -325,6 +325,7 @@ function App() {
   const [showReport, setShowReport] = useState(false)
   const [loadingStep, setLoadingStep] = useState(0)
   const [reportHtml, setReportHtml] = useState('')
+  const [reportData, setReportData] = useState(null)
   const reportSectionRef = useRef(null)
 
   const headerDate = useMemo(() => {
@@ -350,12 +351,47 @@ function App() {
     setProfile((prev) => ({ ...prev, [group]: value }))
   }
 
+  const buildShareText = () => {
+    if (!reportData || typeof reportData !== 'object') return ''
+
+    const sectorName = reportData.sectorName || selectedSector?.name || 'Selected Sector'
+    const theme = reportData.sectorTheme || ''
+    const picks = Array.isArray(reportData.stocks) ? reportData.stocks.slice(0, 5) : []
+    const pickLines = picks
+      .map((stock, idx) => `${idx + 1}. ${stock?.ticker || 'N/A'}${stock?.rating ? ` (${stock.rating})` : ''}`)
+      .join('\n')
+
+    const profileLine = `${profile.risk} risk | ${profile.horizon} | ${profile.strategy} | ${profile.cap}`
+    const appUrl = window.location.origin
+
+    return [
+      'AI Stock Screener Report',
+      `Sector: ${sectorName}`,
+      theme ? `Theme: ${theme}` : '',
+      `Profile: ${profileLine}`,
+      pickLines ? `Top Picks:\n${pickLines}` : '',
+      `View or regenerate in app: ${appUrl}`,
+    ].filter(Boolean).join('\n\n')
+  }
+
+  const shareOnWhatsApp = () => {
+    const text = buildShareText()
+    if (!text) return
+    const url = `https://wa.me/?text=${encodeURIComponent(text)}`
+    window.open(url, '_blank', 'noopener,noreferrer')
+  }
+
+  const exportReportPdf = () => {
+    window.print()
+  }
+
   const generateReport = async () => {
     if (!selectedSector || isGenerating) return
 
     setLoadingStep(0)
     setIsGenerating(true)
     setShowReport(true)
+    setReportData(null)
 
     try {
       const prompt = buildPrompt(selectedSector, profile)
@@ -396,9 +432,11 @@ function App() {
         }
       }
 
+      setReportData(json)
       setReportHtml(renderReportHtml(json, profile))
     } catch (err) {
       const safeMessage = escapeHtml(err?.message || 'Unknown error')
+      setReportData(null)
       setReportHtml(`<div class="error-box"><h3>Report Generation Error</h3><p>Unable to generate report: ${safeMessage}. Please try again.</p></div>`)
     } finally {
       setIsGenerating(false)
@@ -523,6 +561,17 @@ function App() {
                   )
                 })}
               </div>
+            </div>
+          )}
+
+          {!isGenerating && reportHtml && (
+            <div className="report-actions">
+              <button className="report-action-btn" type="button" onClick={shareOnWhatsApp}>
+                Share on WhatsApp
+              </button>
+              <button className="report-action-btn report-action-btn-secondary" type="button" onClick={exportReportPdf}>
+                Export PDF
+              </button>
             </div>
           )}
 

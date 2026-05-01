@@ -461,6 +461,39 @@ body::after {
   display: block;
 }
 
+.report-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-bottom: 16px;
+  flex-wrap: wrap;
+}
+
+.report-action-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 9px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  border: 1px solid var(--border);
+  color: var(--ink);
+  background: var(--gold2);
+  border-radius: var(--r);
+  padding: 10px 14px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.report-action-btn:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 6px 24px rgba(201, 150, 58, 0.3);
+}
+
+.report-action-btn-secondary {
+  background: transparent;
+  color: var(--gold2);
+  border-color: var(--gold2);
+}
+
 .loading-overlay {
   background: rgba(255, 255, 255, 0.02);
   border: 1px solid var(--border);
@@ -1238,5 +1271,51 @@ body::after {
 
   .rpt-meta {
     text-align: left;
+  }
+
+  .report-actions {
+    justify-content: center;
+  }
+}
+
+@media print {
+  body {
+    background: #fff !important;
+    color: #000 !important;
+  }
+
+  body::after,
+  .bg-glow,
+  .header,
+  .hero,
+  .sector-section,
+  .config-section,
+  .generate-section,
+  .report-actions {
+    display: none !important;
+  }
+
+  .app {
+    display: block;
+  }
+
+  .report-section,
+  .report-section.visible {
+    display: block !important;
+    padding: 0 !important;
+    max-width: none;
+    margin: 0;
+  }
+
+  .report-output,
+  .rpt-header,
+  .macro-strip,
+  .summary-wrap,
+  .scard,
+  .rpt-disclaimer {
+    background: #fff !important;
+    color: #111 !important;
+    border-color: #d0d0d0 !important;
+    box-shadow: none !important;
   }
 }
