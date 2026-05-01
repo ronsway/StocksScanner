@@ -17,6 +17,105 @@ const isProduction = process.env.NODE_ENV === 'production'
 const systemPrompt =
   'You are a senior equity analyst at Goldman Sachs with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.'
 
+function normalizeTickerForYahoo(ticker) {
+  return String(ticker || '').trim().toUpperCase().replace(/\./g, '-')
+}
+
+async function fetchYahooQuotes(tickers) {
+  const uniqueTickers = [...new Set((tickers || []).map((t) => String(t || '').trim().toUpperCase()).filter(Boolean))]
+  if (!uniqueTickers.length) return {}
+
+  const yahooSymbols = uniqueTickers.map(normalizeTickerForYahoo)
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols.join(','))}`
+
+  const response = await fetch(url)
+  if (!response.ok) {
+    return {}
+  }
+
+  const payload = await response.json().catch(() => ({}))
+  const results = payload?.quoteResponse?.result || []
+  const byYahooSymbol = new Map()
+
+  for (const row of results) {
+    const symbol = String(row?.symbol || '').toUpperCase()
+    if (!symbol) continue
+    byYahooSymbol.set(symbol, {
+      price: typeof row?.regularMarketPrice === 'number' ? row.regularMarketPrice : null,
+      changePct: typeof row?.regularMarketChangePercent === 'number' ? row.regularMarketChangePercent : null,
+      change: typeof row?.regularMarketChange === 'number' ? row.regularMarketChange : null,
+      currency: row?.currency || 'USD',
+      asOf: row?.regularMarketTime ? new Date(row.regularMarketTime * 1000).toISOString() : null,
+      marketState: row?.marketState || null,
+    })
+  }
+
+  const out = {}
+  for (const original of uniqueTickers) {
+    const normalized = normalizeTickerForYahoo(original)
+    out[original] = byYahooSymbol.get(normalized) || null
+  }
+  return out
+}
+
+async function enrichReportWithLiveMarketData(report) {
+  if (!report || typeof report !== 'object') return report
+  if (!Array.isArray(report.stocks) || !report.stocks.length) return report
+
+  const stockTickers = report.stocks.map((stock) => stock?.ticker).filter(Boolean)
+  const benchmarkTickers = ['SPY', 'QQQ', '^VIX', '^TNX']
+
+  const [stockQuotes, benchmarkQuotes] = await Promise.all([
+    fetchYahooQuotes(stockTickers),
+    fetchYahooQuotes(benchmarkTickers),
+  ])
+
+  const enrichedStocks = report.stocks.map((stock) => {
+    if (!stock || typeof stock !== 'object') return stock
+    const ticker = String(stock.ticker || '').trim().toUpperCase()
+    const live = stockQuotes[ticker]
+    if (!live) return stock
+
+    const next = { ...stock }
+    if (typeof live.price === 'number') {
+      next.livePrice = live.price.toFixed(2)
+      next.currentPrice = `$${live.price.toFixed(2)}`
+    }
+    if (typeof live.changePct === 'number') {
+      next.liveChangePct = live.changePct.toFixed(2)
+      next.revGrowthPositive = live.changePct >= 0
+    }
+    if (typeof live.change === 'number') {
+      next.liveChange = live.change.toFixed(2)
+    }
+    next.liveCurrency = live.currency
+    next.liveAsOf = live.asOf
+    next.liveMarketState = live.marketState
+    next.liveDataSource = 'Yahoo Finance'
+    return next
+  })
+
+  const benchmark = benchmarkTickers
+    .map((ticker) => ({ ticker, quote: benchmarkQuotes[ticker] }))
+    .filter((item) => item.quote)
+    .map((item) => ({
+      ticker: item.ticker,
+      price: item.quote.price,
+      changePct: item.quote.changePct,
+      asOf: item.quote.asOf,
+    }))
+
+  return {
+    ...report,
+    stocks: enrichedStocks,
+    marketSnapshot: {
+      source: 'Yahoo Finance',
+      asOf: new Date().toISOString(),
+      benchmarks: benchmark,
+    },
+  }
+}
+
 function isLikelyModelError(errorMessage) {
   if (typeof errorMessage !== 'string') return false
   const msg = errorMessage.toLowerCase()
@@ -224,8 +323,10 @@ app.post('/api/research-report', async (req, res) => {
       }
     }
 
+    const enrichedReport = await enrichReportWithLiveMarketData(report)
+
     return res.json({
-      report,
+      report: enrichedReport,
       raw,
       content: upstream.content || [],
       providerUsed: upstream.provider,

@@ -46,6 +46,30 @@ const CONFIG_SHORT_LABELS = {
 
 const LOADING_STEPS = ['Screening Universe', 'Valuation Analysis', 'Pipeline & Catalysts', 'Risk Assessment', 'Building Report']
 const REPORT_API_URL = '/api/research-report'
+const REPORT_HISTORY_STORAGE_KEY = 'stocks-scanner-report-history-v1'
+const REPORT_CACHE_TTL_MS = 5 * 60 * 1000
+const MAX_HISTORY_ITEMS = 20
+
+function buildRequestKey(sector, profile, specificTicker) {
+  const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
+  return JSON.stringify({
+    sectorId: sector?.id || '',
+    profile: {
+      risk: profile?.risk || '',
+      horizon: profile?.horizon || '',
+      strategy: profile?.strategy || '',
+      cap: profile?.cap || '',
+    },
+    ticker: normalizedTicker,
+  })
+}
+
+function formatAge(ms) {
+  const minutes = Math.floor(ms / 60000)
+  if (minutes <= 0) return 'just now'
+  if (minutes === 1) return '1 minute ago'
+  return `${minutes} minutes ago`
+}
 
 function escapeHtml(value) {
   return String(value ?? '')
@@ -69,8 +93,11 @@ function sanitizeForHtml(value) {
   return value
 }
 
-function buildPrompt(sector, profile) {
-  return `You are a senior Goldman Sachs equity analyst. Generate a comprehensive stock screening report for the ${sector.name} sector.
+function buildPrompt(sector, profile, specificTicker) {
+  const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
+  const isSingleStockMode = Boolean(normalizedTicker)
+
+  return `You are a senior Goldman Sachs equity analyst. Generate a comprehensive ${isSingleStockMode ? `single-stock report centered on ${normalizedTicker} within` : 'stock screening report for'} the ${sector.name} sector.
 
 Investment profile:
 - Risk tolerance: ${profile.risk}
@@ -130,9 +157,9 @@ Return ONLY a valid JSON object with this exact structure (no markdown, no backt
 }
 
 Requirements:
-- Generate exactly 10 stocks for the ${sector.name} sector
+- ${isSingleStockMode ? `Generate exactly 1 stock, and it must be ${normalizedTicker}` : `Generate exactly 10 stocks for the ${sector.name} sector`}
 - Tailor picks to the ${profile.risk} risk / ${profile.strategy} / ${profile.cap} profile
-- Use real, well-known tickers from the ${sector.name} sector
+- Use real, well-known ticker data from the ${sector.name} sector
 - All numbers should be realistic and grounded in current market data as of early 2026
 - revBars should be 5 numbers from 0-100 showing relative revenue trend (last value = latest year)
 - bullPct, bearPct, currentPct should be 0-100 to position on price target bar (bearPct < currentPct < bullPct)
@@ -167,6 +194,8 @@ function renderReportHtml(data, profile) {
       <td class="td-ticker">${stock.ticker}</td>
       <td class="td-company">${stock.company}</td>
       <td>${ratingBadge(stock.rating)}</td>
+      <td class="td-mono">${stock.currentPrice || (stock.livePrice ? `$${stock.livePrice}` : 'N/A')}</td>
+      ${Number.isFinite(Number(stock.liveChangePct)) ? `<td class="${Number(stock.liveChangePct) >= 0 ? 'td-up' : 'td-down'}">${Number(stock.liveChangePct) >= 0 ? '+' : ''}${Number(stock.liveChangePct).toFixed(2)}%</td>` : '<td class="td-mono">N/A</td>'}
       <td><div style="font-family:'JetBrains Mono',monospace;font-size:12px">${stock.pe}</div><div style="font-family:'JetBrains Mono',monospace;font-size:8.5px;color:var(--silver)">Avg: ${stock.sectorAvgPe}</div></td>
       <td class="${stock.revGrowthPositive ? 'td-up' : 'td-down'}">${stock.revGrowth}</td>
       <td class="td-mono">${stock.de}</td>
@@ -273,6 +302,18 @@ function renderReportHtml(data, profile) {
       <div class="macro-cell-chg ${dirColor(macro.direction)}">${macro.change}</div>
     </div>`).join('')
 
+  const snapshotRows = (safeData.marketSnapshot?.benchmarks || []).map((row) => {
+    const changePct = Number(row.changePct)
+    const changeClass = Number.isFinite(changePct) ? (changePct >= 0 ? 'pos' : 'neg') : 'neu'
+    const pctText = Number.isFinite(changePct) ? `${changePct >= 0 ? '+' : ''}${changePct.toFixed(2)}%` : 'N/A'
+    const pxText = typeof row.price === 'number' ? row.price.toFixed(2) : 'N/A'
+    return `<div class="market-snap-item"><span class="market-snap-ticker">${row.ticker}</span><span class="market-snap-price">${pxText}</span><span class="market-snap-chg ${changeClass}">${pctText}</span></div>`
+  }).join('')
+
+  const liveAsOf = safeData.marketSnapshot?.asOf
+    ? new Date(safeData.marketSnapshot.asOf).toLocaleString('en-US', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' })
+    : ''
+
   return `
     <div class="report-output" style="animation: fadeUp 0.5s ease both">
       <div class="rpt-header">
@@ -290,6 +331,8 @@ function renderReportHtml(data, profile) {
         </div>
       </div>
 
+      ${snapshotRows ? `<div class="market-snap-wrap"><div class="market-snap-head">Live Market Snapshot · ${safeData.marketSnapshot?.source || 'Market Data'}${liveAsOf ? ` · ${liveAsOf}` : ''}</div><div class="market-snap-grid">${snapshotRows}</div></div>` : ''}
+
       <div class="macro-strip">${macroCells}</div>
 
       <div class="section-label" style="margin-bottom:16px">Executive Summary Table</div>
@@ -299,7 +342,7 @@ function renderReportHtml(data, profile) {
             <thead>
               <tr>
                 <th>Ticker</th><th>Company</th><th>Rating</th>
-                <th>P/E vs Sector</th><th>Rev Growth</th><th>D/E</th>
+                <th>Live Px</th><th>1D%</th><th>P/E vs Sector</th><th>Rev Growth</th><th>D/E</th>
                 <th>Dividend</th><th>Moat</th><th>Bull Target</th>
                 <th>Bear Target</th><th>Risk /10</th>
               </tr>
@@ -320,12 +363,25 @@ function renderReportHtml(data, profile) {
 
 function App() {
   const [selectedSector, setSelectedSector] = useState(null)
+  const [specificTicker, setSpecificTicker] = useState('')
   const [profile, setProfile] = useState(DEFAULT_PROFILE)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showReport, setShowReport] = useState(false)
   const [loadingStep, setLoadingStep] = useState(0)
   const [reportHtml, setReportHtml] = useState('')
   const [reportData, setReportData] = useState(null)
+  const [reportHistory, setReportHistory] = useState(() => {
+    try {
+      const raw = localStorage.getItem(REPORT_HISTORY_STORAGE_KEY)
+      if (!raw) return []
+      const parsed = JSON.parse(raw)
+      return Array.isArray(parsed) ? parsed : []
+    } catch {
+      return []
+    }
+  })
+  const [historyNowTs, setHistoryNowTs] = useState(() => Date.now())
+  const [cacheNotice, setCacheNotice] = useState('')
   const reportSectionRef = useRef(null)
 
   const headerDate = useMemo(() => {
@@ -347,8 +403,45 @@ function App() {
     }
   }, [showReport])
 
+  useEffect(() => {
+    if (!reportHistory.length) return undefined
+    const timer = setInterval(() => setHistoryNowTs(Date.now()), 60000)
+    return () => clearInterval(timer)
+  }, [reportHistory.length])
+
   const updateProfile = (group, value) => {
     setProfile((prev) => ({ ...prev, [group]: value }))
+  }
+
+  const persistHistory = (items) => {
+    setReportHistory(items)
+    try {
+      localStorage.setItem(REPORT_HISTORY_STORAGE_KEY, JSON.stringify(items))
+    } catch {
+      // Ignore localStorage quota or privacy mode errors.
+    }
+  }
+
+  const saveHistoryEntry = (entry) => {
+    const withoutSame = reportHistory.filter((item) => item.requestKey !== entry.requestKey)
+    const next = [entry, ...withoutSame].slice(0, MAX_HISTORY_ITEMS)
+    persistHistory(next)
+  }
+
+  const loadHistoryEntry = (entry) => {
+    const sector = SECTORS.find((item) => item.id === entry.sectorId)
+    if (sector) setSelectedSector(sector)
+    setSpecificTicker(entry.specificTicker || '')
+    setProfile(entry.profile || DEFAULT_PROFILE)
+    setReportData(entry.report || null)
+    setReportHtml(renderReportHtml(entry.report || {}, entry.profile || DEFAULT_PROFILE))
+    setShowReport(true)
+    setCacheNotice(`Loaded from history (${formatAge(Date.now() - entry.createdAt)}).`)
+  }
+
+  const clearHistory = () => {
+    persistHistory([])
+    setCacheNotice('History cleared.')
   }
 
   const buildShareText = () => {
@@ -388,13 +481,22 @@ function App() {
   const generateReport = async () => {
     if (!selectedSector || isGenerating) return
 
+    const requestKey = buildRequestKey(selectedSector, profile, specificTicker)
+    const recent = reportHistory.find((entry) => entry.requestKey === requestKey)
+    if (recent && Date.now() - recent.createdAt <= REPORT_CACHE_TTL_MS) {
+      loadHistoryEntry(recent)
+      setCacheNotice(`Used cached report from ${formatAge(Date.now() - recent.createdAt)}.`)
+      return
+    }
+
     setLoadingStep(0)
     setIsGenerating(true)
     setShowReport(true)
     setReportData(null)
+    setCacheNotice('')
 
     try {
-      const prompt = buildPrompt(selectedSector, profile)
+      const prompt = buildPrompt(selectedSector, profile, specificTicker)
       const res = await fetch(REPORT_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -402,6 +504,7 @@ function App() {
           prompt,
           sector: selectedSector.id,
           profile,
+          ticker: specificTicker.trim().toUpperCase(),
         }),
       })
 
@@ -431,6 +534,18 @@ function App() {
           }
         }
       }
+
+      const entry = {
+        id: `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
+        requestKey,
+        createdAt: Date.now(),
+        sectorId: selectedSector.id,
+        sectorName: selectedSector.name,
+        specificTicker: specificTicker.trim().toUpperCase(),
+        profile,
+        report: json,
+      }
+      saveHistoryEntry(entry)
 
       setReportData(json)
       setReportHtml(renderReportHtml(json, profile))
@@ -520,6 +635,24 @@ function App() {
         </div>
 
         <div className="generate-section">
+          <div className="ticker-input-wrap">
+            <label htmlFor="specific-ticker" className="ticker-input-label">Specific Ticker (Optional)</label>
+            <input
+              id="specific-ticker"
+              className="ticker-input"
+              type="text"
+              inputMode="text"
+              placeholder="e.g. NVDA"
+              maxLength={10}
+              value={specificTicker}
+              onChange={(event) => {
+                const cleaned = event.target.value.toUpperCase().replace(/[^A-Z0-9.-]/g, '')
+                setSpecificTicker(cleaned)
+              }}
+            />
+            <div className="ticker-input-help">If provided, the report will focus on this single stock.</div>
+          </div>
+
           <button className="generate-btn" type="button" onClick={generateReport} disabled={!selectedSector || isGenerating}>
             {isGenerating ? (
               <>
@@ -540,7 +673,26 @@ function App() {
           <div className="no-sector-msg" style={{ opacity: selectedSector ? 0 : 1 }}>
             {'<- Select a sector above to enable report generation'}
           </div>
+          {cacheNotice && <div className="cache-notice">{cacheNotice}</div>}
         </div>
+
+        {reportHistory.length > 0 && (
+          <div className="history-section">
+            <div className="history-head">
+              <div className="section-label" style={{ marginBottom: 12 }}>Recent Reports</div>
+              <button className="history-clear-btn" type="button" onClick={clearHistory}>Clear</button>
+            </div>
+            <div className="history-grid">
+              {reportHistory.slice(0, 8).map((entry) => (
+                <button key={entry.id} type="button" className="history-card" onClick={() => loadHistoryEntry(entry)}>
+                  <div className="history-card-title">{entry.specificTicker || entry.sectorName}</div>
+                  <div className="history-card-sub">{entry.specificTicker ? `${entry.sectorName} sector` : `${entry.profile?.risk || ''} • ${entry.profile?.strategy || ''}`}</div>
+                  <div className="history-card-time">{new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {formatAge(historyNowTs - entry.createdAt)}</div>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div ref={reportSectionRef} className={`report-section ${showReport ? 'visible' : ''}`}>
           {isGenerating && (

@@ -390,6 +390,49 @@ body::after {
   animation: fadeUp 0.7s ease 0.35s both;
 }
 
+.ticker-input-wrap {
+  max-width: 420px;
+  margin: 0 auto 18px;
+  text-align: left;
+}
+
+.ticker-input-label {
+  display: block;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 2px;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin-bottom: 8px;
+}
+
+.ticker-input {
+  width: 100%;
+  border: 1px solid var(--border);
+  background: rgba(255, 255, 255, 0.03);
+  color: var(--cream);
+  border-radius: var(--r);
+  padding: 11px 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  outline: none;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.ticker-input:focus {
+  border-color: var(--gold2);
+  box-shadow: 0 0 0 2px rgba(201, 150, 58, 0.2);
+}
+
+.ticker-input-help {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.7px;
+  color: var(--silver);
+  margin-top: 8px;
+}
+
 .generate-btn {
   position: relative;
   display: inline-flex;
@@ -447,6 +490,85 @@ body::after {
   margin-top: 12px;
   letter-spacing: 1px;
   transition: opacity 0.2s;
+}
+
+.cache-notice {
+  margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8.5px;
+  letter-spacing: 0.8px;
+  color: var(--gold2);
+}
+
+.history-section {
+  padding: 0 48px 22px;
+}
+
+.history-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.history-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  gap: 12px;
+  max-width: 1100px;
+  margin: 0 auto;
+}
+
+.history-card {
+  text-align: left;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 12px;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.history-card:hover {
+  border-color: var(--gold);
+  transform: translateY(-1px);
+}
+
+.history-card-title {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  color: var(--cream);
+  margin-bottom: 4px;
+}
+
+.history-card-sub {
+  font-size: 10px;
+  color: var(--silver);
+  margin-bottom: 6px;
+}
+
+.history-card-time {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  color: var(--silver);
+  opacity: 0.85;
+}
+
+.history-clear-btn {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 1px;
+  text-transform: uppercase;
+  background: transparent;
+  border: 1px solid var(--border);
+  color: var(--silver);
+  border-radius: var(--r);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+.history-clear-btn:hover {
+  color: var(--gold2);
+  border-color: var(--gold2);
 }
 
 .report-section {
@@ -633,6 +755,57 @@ body::after {
   overflow: hidden;
   margin-bottom: 24px;
   flex-wrap: wrap;
+}
+
+.market-snap-wrap {
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 14px;
+  margin-bottom: 18px;
+}
+
+.market-snap-head {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 1.2px;
+  text-transform: uppercase;
+  color: var(--silver);
+  margin-bottom: 10px;
+}
+
+.market-snap-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+  gap: 8px;
+}
+
+.market-snap-item {
+  border: 1px solid var(--border2);
+  background: rgba(0, 0, 0, 0.2);
+  border-radius: 3px;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.market-snap-ticker {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  color: var(--gold2);
+}
+
+.market-snap-price {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  color: var(--cream);
+  font-weight: 600;
+}
+
+.market-snap-chg {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
 }
 
 .macro-cell {
@@ -1252,6 +1425,7 @@ body::after {
   .sector-section,
   .config-section,
   .generate-section,
+  .history-section,
   .report-section {
     padding-left: 20px;
     padding-right: 20px;
