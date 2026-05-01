@@ -7,14 +7,148 @@ dotenv.config()
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
+const aiProvider = String(process.env.AI_PROVIDER || 'anthropic').toLowerCase()
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY
 const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+const openAiApiKey = process.env.OPENAI_API_KEY
+const openAiModel = process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+const openAiBaseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
 const isProduction = process.env.NODE_ENV === 'production'
+const systemPrompt =
+  'You are a senior equity analyst at Goldman Sachs with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.'
 
 function isLikelyModelError(errorMessage) {
   if (typeof errorMessage !== 'string') return false
   const msg = errorMessage.toLowerCase()
   return msg.includes('model') && (msg.includes('not found') || msg.includes('invalid') || msg.includes('unknown'))
+}
+
+function isLikelyCreditError(errorMessage) {
+  if (typeof errorMessage !== 'string') return false
+  const msg = errorMessage.toLowerCase()
+  return msg.includes('credit') || msg.includes('billing') || msg.includes('insufficient') || msg.includes('quota')
+}
+
+async function requestAnthropic(prompt) {
+  if (!anthropicApiKey) {
+    return {
+      ok: false,
+      status: 500,
+      error: 'Server is missing ANTHROPIC_API_KEY. Add it to .env before generating reports.',
+      provider: 'anthropic',
+      modelTried: anthropicModel,
+    }
+  }
+
+  const modelsToTry = [...new Set([
+    anthropicModel,
+    'claude-sonnet-4-20250514',
+    'claude-3-7-sonnet-latest',
+    'claude-3-5-sonnet-latest',
+  ])]
+
+  let response = null
+  let payload = {}
+  let usedModel = modelsToTry[0]
+
+  for (const model of modelsToTry) {
+    usedModel = model
+    response = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': anthropicApiKey,
+        'anthropic-version': '2023-06-01',
+      },
+      body: JSON.stringify({
+        model,
+        max_tokens: 4096,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: prompt }],
+      }),
+    })
+
+    payload = await response.json().catch(() => ({}))
+
+    if (response.ok) {
+      return {
+        ok: true,
+        status: response.status,
+        raw: payload?.content?.[0]?.text || '',
+        content: payload?.content || [],
+        provider: 'anthropic',
+        modelUsed: usedModel,
+      }
+    }
+
+    const upstreamMessage = payload?.error?.message || payload?.error || ''
+    if (!(response.status === 400 && isLikelyModelError(String(upstreamMessage)))) {
+      break
+    }
+  }
+
+  return {
+    ok: false,
+    status: response?.status || 502,
+    error:
+      payload?.error?.message ||
+      payload?.error ||
+      `Upstream API request failed with status ${response?.status || 502}`,
+    provider: 'anthropic',
+    modelTried: usedModel,
+  }
+}
+
+async function requestOpenAiCompatible(prompt) {
+  if (!openAiApiKey) {
+    return {
+      ok: false,
+      status: 500,
+      error: 'Server is missing OPENAI_API_KEY. Add it to .env before generating reports.',
+      provider: 'openai',
+      modelTried: openAiModel,
+    }
+  }
+
+  const response = await fetch(`${openAiBaseUrl}/chat/completions`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${openAiApiKey}`,
+    },
+    body: JSON.stringify({
+      model: openAiModel,
+      temperature: 0.2,
+      messages: [
+        { role: 'system', content: systemPrompt },
+        { role: 'user', content: prompt },
+      ],
+    }),
+  })
+
+  const payload = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    return {
+      ok: false,
+      status: response.status,
+      error:
+        payload?.error?.message ||
+        payload?.error ||
+        `Upstream API request failed with status ${response.status}`,
+      provider: 'openai',
+      modelTried: openAiModel,
+    }
+  }
+
+  const raw = payload?.choices?.[0]?.message?.content || ''
+  return {
+    ok: true,
+    status: response.status,
+    raw,
+    content: [{ type: 'text', text: raw }],
+    provider: 'openai',
+    modelUsed: openAiModel,
+  }
 }
 
 const __filename = fileURLToPath(import.meta.url)
@@ -29,12 +163,6 @@ app.get('/api/health', (_req, res) => {
 
 app.post('/api/research-report', async (req, res) => {
   try {
-    if (!anthropicApiKey) {
-      return res.status(500).json({
-        error: 'Server is missing ANTHROPIC_API_KEY. Add it to .env before generating reports.',
-      })
-    }
-
     const incomingPrompt = req.body?.prompt
     const incomingSector = req.body?.sector
     const incomingProfile = req.body?.profile
@@ -56,58 +184,30 @@ app.post('/api/research-report', async (req, res) => {
       })
     }
 
-    const modelsToTry = [...new Set([
-      anthropicModel,
-      'claude-sonnet-4-20250514',
-      'claude-3-7-sonnet-latest',
-      'claude-3-5-sonnet-latest',
-    ])]
+    let upstream
+    if (aiProvider === 'openai') {
+      upstream = await requestOpenAiCompatible(prompt)
+    } else {
+      upstream = await requestAnthropic(prompt)
+      const canFallbackToOpenAi =
+        !upstream.ok &&
+        Boolean(openAiApiKey) &&
+        isLikelyCreditError(upstream.error)
 
-    let response = null
-    let payload = {}
-    let usedModel = modelsToTry[0]
-
-    for (const model of modelsToTry) {
-      usedModel = model
-      response = await fetch('https://api.anthropic.com/v1/messages', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'x-api-key': anthropicApiKey,
-          'anthropic-version': '2023-06-01',
-        },
-        body: JSON.stringify({
-          model,
-          max_tokens: 4096,
-          system:
-            'You are a senior equity analyst at Goldman Sachs with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.',
-          messages: [{ role: 'user', content: prompt }],
-        }),
-      })
-
-      payload = await response.json().catch(() => ({}))
-
-      if (response.ok) {
-        break
-      }
-
-      const upstreamMessage = payload?.error?.message || payload?.error || ''
-      if (!(response.status === 400 && isLikelyModelError(String(upstreamMessage)))) {
-        break
+      if (canFallbackToOpenAi) {
+        upstream = await requestOpenAiCompatible(prompt)
       }
     }
 
-    if (!response || !response.ok) {
-      return res.status(response?.status || 502).json({
-        error:
-          payload?.error?.message ||
-          payload?.error ||
-          `Upstream API request failed with status ${response?.status || 502}`,
-        modelTried: usedModel,
+    if (!upstream.ok) {
+      return res.status(upstream.status || 502).json({
+        error: upstream.error,
+        provider: upstream.provider,
+        modelTried: upstream.modelTried,
       })
     }
 
-    const raw = payload?.content?.[0]?.text || ''
+    const raw = upstream.raw || ''
     let report = null
 
     try {
@@ -127,8 +227,9 @@ app.post('/api/research-report', async (req, res) => {
     return res.json({
       report,
       raw,
-      content: payload?.content || [],
-      modelUsed: usedModel,
+      content: upstream.content || [],
+      providerUsed: upstream.provider,
+      modelUsed: upstream.modelUsed,
     })
   } catch (error) {
     return res.status(500).json({

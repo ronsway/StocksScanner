@@ -369,11 +369,14 @@ function App() {
         }),
       })
 
+      const responsePayload = await res.json().catch(() => ({}))
+
       if (!res.ok) {
-        throw new Error(`Server request failed (${res.status})`)
+        const details = responsePayload?.error || responsePayload?.message || `Server request failed (${res.status})`
+        throw new Error(details)
       }
 
-      const data = await res.json()
+      const data = responsePayload
       const raw = data.content?.[0]?.text || data.raw || data.text || ''
 
       let json
