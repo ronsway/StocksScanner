@@ -26,28 +26,67 @@ async function fetchYahooQuotes(tickers) {
   if (!uniqueTickers.length) return {}
 
   const yahooSymbols = uniqueTickers.map(normalizeTickerForYahoo)
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols.join(','))}`
-
-  const response = await fetch(url)
-  if (!response.ok) {
-    return {}
-  }
-
-  const payload = await response.json().catch(() => ({}))
-  const results = payload?.quoteResponse?.result || []
   const byYahooSymbol = new Map()
 
-  for (const row of results) {
-    const symbol = String(row?.symbol || '').toUpperCase()
-    if (!symbol) continue
-    byYahooSymbol.set(symbol, {
-      price: typeof row?.regularMarketPrice === 'number' ? row.regularMarketPrice : null,
-      changePct: typeof row?.regularMarketChangePercent === 'number' ? row.regularMarketChangePercent : null,
-      change: typeof row?.regularMarketChange === 'number' ? row.regularMarketChange : null,
-      currency: row?.currency || 'USD',
-      asOf: row?.regularMarketTime ? new Date(row.regularMarketTime * 1000).toISOString() : null,
-      marketState: row?.marketState || null,
-    })
+  const quoteUrl = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${encodeURIComponent(yahooSymbols.join(','))}`
+  const quoteResponse = await fetch(quoteUrl).catch(() => null)
+
+  if (quoteResponse?.ok) {
+    const payload = await quoteResponse.json().catch(() => ({}))
+    const results = payload?.quoteResponse?.result || []
+    for (const row of results) {
+      const symbol = String(row?.symbol || '').toUpperCase()
+      if (!symbol) continue
+      byYahooSymbol.set(symbol, {
+        price: typeof row?.regularMarketPrice === 'number' ? row.regularMarketPrice : null,
+        changePct: typeof row?.regularMarketChangePercent === 'number' ? row.regularMarketChangePercent : null,
+        change: typeof row?.regularMarketChange === 'number' ? row.regularMarketChange : null,
+        currency: row?.currency || 'USD',
+        asOf: row?.regularMarketTime ? new Date(row.regularMarketTime * 1000).toISOString() : null,
+        marketState: row?.marketState || null,
+      })
+    }
+  }
+
+  // Fallback: query chart endpoint for symbols missing from quote endpoint.
+  const missingSymbols = yahooSymbols.filter((symbol) => {
+    const row = byYahooSymbol.get(symbol)
+    return !row || typeof row.price !== 'number'
+  })
+
+  if (missingSymbols.length) {
+    const chartResults = await Promise.all(
+      missingSymbols.map(async (symbol) => {
+        const chartUrl = `https://query2.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?interval=1m&range=1d`
+        const chartResponse = await fetch(chartUrl).catch(() => null)
+        if (!chartResponse?.ok) return null
+        const payload = await chartResponse.json().catch(() => ({}))
+        const meta = payload?.chart?.result?.[0]?.meta
+        if (!meta || typeof meta.regularMarketPrice !== 'number') return null
+        return {
+          symbol,
+          quote: {
+            price: meta.regularMarketPrice,
+            changePct:
+              typeof meta.regularMarketPrice === 'number' && typeof meta.chartPreviousClose === 'number' && meta.chartPreviousClose !== 0
+                ? ((meta.regularMarketPrice - meta.chartPreviousClose) / meta.chartPreviousClose) * 100
+                : null,
+            change:
+              typeof meta.regularMarketPrice === 'number' && typeof meta.chartPreviousClose === 'number'
+                ? meta.regularMarketPrice - meta.chartPreviousClose
+                : null,
+            currency: meta.currency || 'USD',
+            asOf: meta.regularMarketTime ? new Date(meta.regularMarketTime * 1000).toISOString() : null,
+            marketState: meta.marketState || null,
+          },
+        }
+      }),
+    )
+
+    for (const result of chartResults) {
+      if (!result) continue
+      byYahooSymbol.set(result.symbol, result.quote)
+    }
   }
 
   const out = {}
