@@ -40,6 +40,35 @@ npm run dev
 - Frontend: http://localhost:5173
 - API server: http://localhost:8787
 
+## One-Command Scripts
+
+Use these wrappers if you want one file to run everything:
+
+Linux or macOS:
+
+```bash
+./scripts/start_dev.sh
+./scripts/stop_dev.sh
+./scripts/start_deploy.sh
+./scripts/stop_deploy.sh
+```
+
+Windows:
+
+```bat
+scripts\start_dev.bat
+scripts\stop_dev.bat
+scripts\start_deploy.bat
+scripts\stop_deploy.bat
+```
+
+What they do:
+
+- `start_dev`: Installs dependencies if needed, then starts frontend and backend in background.
+- `stop_dev`: Stops development processes.
+- `start_deploy`: Installs dependencies, builds frontend, then starts production server in background.
+- `stop_deploy`: Stops production server process.
+
 ## Scripts
 
 - `npm run dev`: Runs frontend and backend together

@@ -808,12 +808,15 @@ async function generateReport() {
       })
     });
 
+    const payload = await res.json().catch(() => ({}));
+
     if (!res.ok) {
-      throw new Error(`Server request failed (${res.status})`);
+      const details = payload?.error || payload?.message || `Server request failed (${res.status})`;
+      throw new Error(details);
     }
 
     clearInterval(stepInterval);
-    const data = await res.json();
+    const data = payload;
     const raw = data.content?.[0]?.text || data.raw || data.text || '';
     
     let json;
