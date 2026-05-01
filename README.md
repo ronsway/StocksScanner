@@ -1,16 +1,56 @@
-# React + Vite
+# GS AI Stock Screener (React)
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This project is now a full React + Vite application with a local Node API server for report generation.
 
-Currently, two official plugins are available:
+## What Changed
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- Migrated the original single-file HTML app into a React app in `src/App.jsx`.
+- Preserved the original visual design and report rendering flow.
+- Moved AI requests behind a server endpoint so API keys are not exposed in the browser.
+- Added Vite proxying from `/api/*` to the local server.
 
-## React Compiler
+## Setup
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+1. Install dependencies:
 
-## Expanding the ESLint configuration
+```bash
+npm install
+```
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+2. Create your env file:
+
+```bash
+cp .env.example .env
+```
+
+3. Add your Anthropic API key to `.env`:
+
+```env
+ANTHROPIC_API_KEY=your_real_key_here
+```
+
+## Run
+
+Start both frontend and backend together:
+
+```bash
+npm run dev
+```
+
+- Frontend: http://localhost:5173
+- API server: http://localhost:8787
+
+## Scripts
+
+- `npm run dev`: Runs frontend and backend together
+- `npm run dev:client`: Runs only Vite frontend
+- `npm run dev:server`: Runs only API server
+- `npm run build`: Builds frontend for production
+- `npm run preview`: Previews built frontend
+- `npm run lint`: Runs ESLint
+
+## API Endpoint
+
+- `POST /api/research-report`
+- Request body expects `{ prompt, sector, profile }`
+- Response includes parsed `report` when valid JSON is returned by the model, plus raw model text.

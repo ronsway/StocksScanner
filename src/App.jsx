@@ -334,7 +334,6 @@ function App() {
 
   useEffect(() => {
     if (!isGenerating) return undefined
-    setLoadingStep(0)
     const interval = setInterval(() => {
       setLoadingStep((prev) => (prev < LOADING_STEPS.length - 1 ? prev + 1 : prev))
     }, 800)
@@ -354,6 +353,7 @@ function App() {
   const generateReport = async () => {
     if (!selectedSector || isGenerating) return
 
+    setLoadingStep(0)
     setIsGenerating(true)
     setShowReport(true)
 
