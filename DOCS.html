@@ -1,0 +1,1188 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>StocksScanner — Full Technical Documentation</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:      #0a0c12;
+      --bg2:     #111520;
+      --bg3:     #181e2c;
+      --gold:    #c9963a;
+      --gold2:   #e8b84a;
+      --gold3:   #f5d070;
+      --text:    #c8d0dc;
+      --text2:   #7a8ea8;
+      --border:  rgba(201,150,58,0.22);
+      --green:   #2ecc8a;
+      --red:     #e05060;
+      --blue:    #4a9fd4;
+      --r:       6px;
+      --sidebar: 260px;
+    }
+
+    html { scroll-behavior: smooth; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.7;
+      background: var(--bg);
+      color: var(--text);
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* ── Sidebar ─────────────────────────────── */
+    nav#sidebar {
+      position: fixed;
+      top: 0; left: 0;
+      width: var(--sidebar);
+      height: 100vh;
+      background: var(--bg2);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      padding: 24px 0 40px;
+      z-index: 100;
+    }
+
+    nav#sidebar .nav-brand {
+      padding: 0 20px 20px;
+      border-bottom: 1px solid var(--border);
+      margin-bottom: 12px;
+    }
+
+    nav#sidebar .nav-brand span {
+      display: block;
+      font-size: 13px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--gold);
+      text-transform: uppercase;
+    }
+
+    nav#sidebar .nav-brand small {
+      font-size: 11px;
+      color: var(--text2);
+    }
+
+    nav#sidebar ol {
+      list-style: none;
+      padding: 0 0 0 16px;
+    }
+
+    nav#sidebar ol li a {
+      display: block;
+      padding: 5px 16px 5px 4px;
+      font-size: 12.5px;
+      color: var(--text2);
+      text-decoration: none;
+      border-left: 2px solid transparent;
+      transition: color 0.15s, border-color 0.15s;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    nav#sidebar ol li a:hover,
+    nav#sidebar ol li a.active {
+      color: var(--gold2);
+      border-left-color: var(--gold);
+    }
+
+    /* ── Main content ────────────────────────── */
+    main {
+      margin-left: var(--sidebar);
+      flex: 1;
+      max-width: 900px;
+      padding: 48px 56px 80px;
+    }
+
+    /* ── Page header ─────────────────────────── */
+    .page-header {
+      border-bottom: 2px solid var(--border);
+      padding-bottom: 24px;
+      margin-bottom: 40px;
+    }
+
+    .page-header h1 {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--gold2);
+      letter-spacing: -0.02em;
+      margin-bottom: 8px;
+    }
+
+    .page-header .meta {
+      font-size: 13px;
+      color: var(--text2);
+      font-style: italic;
+    }
+
+    .page-header .stack-badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 12px;
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 9px;
+      background: rgba(201,150,58,0.12);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      font-size: 11.5px;
+      color: var(--gold3);
+      font-weight: 600;
+    }
+
+    /* ── Section headings ────────────────────── */
+    h2 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--gold2);
+      margin: 48px 0 16px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+      scroll-margin-top: 24px;
+    }
+
+    h3 {
+      font-size: 15.5px;
+      font-weight: 700;
+      color: var(--gold3);
+      margin: 28px 0 10px;
+      scroll-margin-top: 24px;
+    }
+
+    h4 {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+      margin: 20px 0 6px;
+    }
+
+    /* ── Prose ───────────────────────────────── */
+    p { margin: 10px 0; }
+
+    strong { color: var(--text); font-weight: 700; }
+    em { font-style: italic; color: var(--text2); }
+
+    a { color: var(--blue); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    ul, ol {
+      padding-left: 24px;
+      margin: 8px 0;
+    }
+
+    li { margin: 4px 0; }
+
+    blockquote {
+      border-left: 3px solid var(--gold);
+      margin: 16px 0;
+      padding: 8px 16px;
+      background: var(--bg3);
+      border-radius: 0 var(--r) var(--r) 0;
+      color: var(--text2);
+      font-style: italic;
+    }
+
+    hr {
+      border: none;
+      border-top: 1px solid var(--border);
+      margin: 36px 0;
+    }
+
+    /* ── Inline code ─────────────────────────── */
+    code {
+      font-family: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', Consolas, monospace;
+      font-size: 12.5px;
+      background: rgba(201,150,58,0.1);
+      border: 1px solid rgba(201,150,58,0.2);
+      border-radius: 3px;
+      padding: 1px 5px;
+      color: var(--gold3);
+    }
+
+    /* ── Code blocks ─────────────────────────── */
+    pre {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 16px 20px;
+      overflow-x: auto;
+      margin: 14px 0;
+      position: relative;
+    }
+
+    pre code {
+      background: none;
+      border: none;
+      padding: 0;
+      font-size: 12.5px;
+      color: var(--text);
+      line-height: 1.6;
+    }
+
+    .lang-tag {
+      position: absolute;
+      top: 6px; right: 10px;
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      color: var(--text2);
+      text-transform: uppercase;
+      font-family: inherit;
+    }
+
+    /* ── Tables ──────────────────────────────── */
+    .table-wrap { overflow-x: auto; margin: 14px 0; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13.5px;
+    }
+
+    thead tr { background: rgba(201,150,58,0.1); }
+
+    th {
+      padding: 9px 14px;
+      text-align: left;
+      font-weight: 700;
+      color: var(--gold2);
+      border-bottom: 2px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 8px 14px;
+      border-bottom: 1px solid rgba(201,150,58,0.08);
+      vertical-align: top;
+    }
+
+    tbody tr:hover { background: rgba(255,255,255,0.02); }
+
+    /* ── Section cards ───────────────────────── */
+    .section-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--r);
+      padding: 20px 24px;
+      margin: 16px 0;
+    }
+
+    /* ── Top of page link ────────────────────── */
+    .back-top {
+      display: inline-block;
+      margin-top: 8px;
+      font-size: 12px;
+      color: var(--text2);
+    }
+
+    /* ── Responsive ──────────────────────────── */
+    @media (max-width: 860px) {
+      nav#sidebar { display: none; }
+      main { margin-left: 0; padding: 24px 20px 60px; }
+    }
+
+    @media print {
+      nav#sidebar { display: none; }
+      main { margin-left: 0; max-width: 100%; padding: 0; }
+      body { background: #fff; color: #111; }
+      pre, .section-card { background: #f5f5f5; border-color: #ccc; }
+      code { background: #f0f0f0; border-color: #ddd; color: #333; }
+      pre code { color: #111; }
+      h2 { color: #8a6520; border-color: #ccc; }
+      h3 { color: #5a4010; }
+      a { color: #1a6fa8; }
+    }
+  .doc-footer { font-size: 12px; color: var(--text2); text-align: center; padding-top: 8px; }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ SIDEBAR ════════════════════ -->
+<nav id="sidebar">
+  <div class="nav-brand">
+    <span>StocksScanner</span>
+    <small>Technical Documentation</small>
+  </div>
+  <ol>
+    <li><a href="#1-project-overview">1. Project Overview</a></li>
+    <li><a href="#2-repository-structure">2. Repository Structure</a></li>
+    <li><a href="#3-architecture">3. Architecture</a></li>
+    <li><a href="#4-environment-setup">4. Environment Setup</a></li>
+    <li><a href="#5-running-the-app">5. Running the App</a></li>
+    <li><a href="#6-npm-scripts-reference">6. npm Scripts Reference</a></li>
+    <li><a href="#7-shell-batch-script-reference">7. Shell &amp; Batch Scripts</a></li>
+    <li><a href="#8-frontend">8. Frontend — App.jsx</a></li>
+    <li><a href="#9-styling-theming">9. Styling &amp; Theming</a></li>
+    <li><a href="#10-backend">10. Backend — index.js</a></li>
+    <li><a href="#11-api-reference">11. API Reference</a></li>
+    <li><a href="#12-ai-prompt-system">12. AI Prompt System</a></li>
+    <li><a href="#13-live-market-data">13. Live Market Data</a></li>
+    <li><a href="#14-report-caching">14. Report Caching &amp; History</a></li>
+    <li><a href="#15-pdf-export">15. PDF Export</a></li>
+    <li><a href="#16-security-practices">16. Security Practices</a></li>
+    <li><a href="#17-deployment">17. Deployment</a></li>
+    <li><a href="#18-codebase-conventions">18. Codebase Conventions</a></li>
+    <li><a href="#19-known-limitations">19. Known Limitations</a></li>
+    <li><a href="#20-changelog">20. Changelog</a></li>
+  </ol>
+</nav>
+
+<!-- ════════════════════ MAIN ════════════════════ -->
+<main>
+
+  <div class="page-header">
+    <h1>StocksScanner — Full Technical Documentation</h1>
+    <p class="meta">Last updated: May 2026</p>
+    <div class="stack-badges">
+      <span class="badge">React 19</span>
+      <span class="badge">Vite</span>
+      <span class="badge">Express 5</span>
+      <span class="badge">Node.js</span>
+      <span class="badge">Yahoo Finance API</span>
+      <span class="badge">Anthropic</span>
+      <span class="badge">OpenAI</span>
+    </div>
+  </div>
+
+  <hr />
+
+  <!-- ── 1. Project Overview ─────────────────────── -->
+  <h2 id="1-project-overview">1. Project Overview</h2>
+
+  <p>StocksScanner is a single-page React application that generates <strong>institutional-grade equity research reports</strong> on demand, backed by a local Express API server. The user selects a market sector and investment profile; the server sends a structured prompt to an AI model (Claude or GPT), parses the JSON response, enriches it with live Yahoo Finance price data, and returns a fully rendered research report — complete with macro context, stock deep-dives, price targets, bull/bear cases, entry zones, stop losses, and Wall Street consensus data.</p>
+
+  <p><strong>Core capabilities:</strong></p>
+  <ul>
+    <li>AI-generated reports for 12 sectors with 10 stock picks each (or a single-ticker deep-dive)</li>
+    <li>Live price enrichment via Yahoo Finance (quote API + chart API fallback)</li>
+    <li>Price target and entry zone reconciliation against live prices</li>
+    <li>5-minute in-browser report caching with full history panel</li>
+    <li>6 UI themes switchable without page reload</li>
+    <li>PDF export via hidden iframe (no blank tab, full orientation/zoom control)</li>
+    <li>WhatsApp share</li>
+    <li>Dual AI provider support: Anthropic Claude + any OpenAI-compatible endpoint</li>
+  </ul>
+
+  <hr />
+
+  <!-- ── 2. Repository Structure ─────────────────── -->
+  <h2 id="2-repository-structure">2. Repository Structure</h2>
+
+  <pre><span class="lang-tag">text</span><code>StocksScanner/
+├── src/
+│   ├── App.jsx          # Entire frontend: constants, data, logic, JSX
+│   └── App.css          # All styles + CSS custom properties + 6 themes + print styles
+├── server/
+│   └── index.js         # Express API: AI calls, Yahoo Finance, price reconciliation
+├── scripts/
+│   ├── start_dev.bat    # Windows: start frontend + backend in background
+│   ├── stop_dev.bat     # Windows: stop development processes
+│   ├── start_deploy.bat # Windows: build + start production server
+│   ├── stop_deploy.bat  # Windows: stop production server
+│   ├── start_dev.sh     # Linux/macOS equivalents
+│   ├── stop_dev.sh
+│   ├── start_deploy.sh
+│   └── stop_deploy.sh
+├── public/              # Static assets served by Vite
+├── .run/                # PID files for background processes (git-ignored)
+├── logs/                # Log output from background scripts (git-ignored)
+├── .env                 # Local secrets — never commit this
+├── .env.example         # Template for .env
+├── .gitignore
+├── eslint.config.js
+├── index.html           # Vite HTML entry point
+├── vite.config.js       # Vite config with /api proxy to port 8787
+├── package.json
+├── README.md            # Quick-start guide
+└── DOCS.md              # Markdown version of this document</code></pre>
+
+  <hr />
+
+  <!-- ── 3. Architecture ─────────────────────────── -->
+  <h2 id="3-architecture">3. Architecture</h2>
+
+  <pre><span class="lang-tag">text</span><code>Browser (React SPA)
+│
+│  /api/* proxied by Vite dev server
+│  (direct in production — same Express server serves /dist)
+▼
+Express API Server  (port 8787)
+│
+├── POST /api/research-report
+│     │
+│     ├── buildPrompt() → AI provider
+│     │     ├── Anthropic Claude  (claude-sonnet-4-20250514, with model fallback chain)
+│     │     └── OpenAI-compatible (gpt-4.1-mini default, configurable)
+│     │
+│     ├── Parse JSON response from model
+│     │
+│     └── enrichReportWithLiveMarketData()
+│           ├── fetchYahooQuotes(stockTickers)   → Yahoo Finance /v7/finance/quote
+│           ├── fetchYahooQuotes(benchmarkTickers) → SPY, QQQ, ^VIX, ^TNX
+│           └── reconcileTargetsWithLivePrice()  → rescale price targets &amp; entry zones
+│
+└── GET /api/health</code></pre>
+
+  <p><strong>Data flow summary:</strong></p>
+  <ol>
+    <li>User picks sector + profile → clicks Generate</li>
+    <li><code>buildPrompt()</code> constructs a structured prompt with sector, profile, and strict JSON schema</li>
+    <li>Frontend POSTs <code>{ prompt, sector, profile, aiProvider, ticker }</code> to <code>/api/research-report</code></li>
+    <li>Server sends prompt + system prompt to AI provider</li>
+    <li>Server parses the AI JSON response</li>
+    <li>Server fetches live prices from Yahoo Finance for all tickers + SPY/QQQ/VIX/TNX</li>
+    <li>Server reconciles model price targets against live prices</li>
+    <li>Server returns enriched report JSON to frontend</li>
+    <li>Frontend renders the report as HTML via <code>renderReportHtml()</code> and stores it in history</li>
+  </ol>
+
+  <hr />
+
+  <!-- ── 4. Environment Setup ────────────────────── -->
+  <h2 id="4-environment-setup">4. Environment Setup</h2>
+
+  <p>Copy the example file and fill in your keys:</p>
+
+  <pre><span class="lang-tag">bash</span><code>cp .env.example .env</code></pre>
+
+  <p><strong>All environment variables:</strong></p>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Variable</th><th>Required</th><th>Default</th><th>Description</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>AI_PROVIDER</code></td><td>No</td><td><code>anthropic</code></td><td>Default provider when client sends <code>aiProvider=auto</code>. Accepts <code>anthropic</code> or <code>openai</code>.</td></tr>
+        <tr><td><code>ANTHROPIC_API_KEY</code></td><td>If using Claude</td><td>—</td><td>Your Anthropic API key</td></tr>
+        <tr><td><code>ANTHROPIC_MODEL</code></td><td>No</td><td><code>claude-sonnet-4-20250514</code></td><td>Anthropic model ID. Server tries this first, then falls back through a hardcoded chain of Claude models.</td></tr>
+        <tr><td><code>OPENAI_API_KEY</code></td><td>If using OpenAI/other</td><td>—</td><td>API key for OpenAI or any compatible provider</td></tr>
+        <tr><td><code>OPENAI_MODEL</code></td><td>No</td><td><code>gpt-4.1-mini</code></td><td>Model name for the OpenAI-compatible endpoint</td></tr>
+        <tr><td><code>OPENAI_BASE_URL</code></td><td>No</td><td><code>https://api.openai.com/v1</code></td><td>Base URL — point this at OpenRouter, Groq, Together, etc.</td></tr>
+        <tr><td><code>PORT</code></td><td>No</td><td><code>8787</code></td><td>Port the Express server listens on</td></tr>
+        <tr><td><code>NODE_ENV</code></td><td>No</td><td>unset</td><td>Set to <code>production</code> to serve the built React app from <code>/dist</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p><strong>Using OpenRouter / Groq / Together:</strong></p>
+  <pre><span class="lang-tag">env</span><code>AI_PROVIDER=openai
+OPENAI_API_KEY=sk-or-xxxx
+OPENAI_MODEL=anthropic/claude-3.5-sonnet
+OPENAI_BASE_URL=https://openrouter.ai/api/v1</code></pre>
+
+  <hr />
+
+  <!-- ── 5. Running the App ──────────────────────── -->
+  <h2 id="5-running-the-app">5. Running the App</h2>
+
+  <p><strong>Development (both frontend + backend together):</strong></p>
+  <pre><span class="lang-tag">bash</span><code>npm run dev</code></pre>
+  <ul>
+    <li>Frontend (Vite): <a href="http://localhost:5173">http://localhost:5173</a></li>
+    <li>API server: <a href="http://localhost:8787">http://localhost:8787</a></li>
+    <li>All <code>/api/*</code> requests from the frontend are proxied by Vite to the API server</li>
+  </ul>
+
+  <p><strong>Production:</strong></p>
+  <pre><span class="lang-tag">bash</span><code>npm run build
+NODE_ENV=production node server/index.js</code></pre>
+  <p>The Express server serves the built React app from <code>/dist</code> and handles all <code>/api/*</code> routes on the same port.</p>
+
+  <hr />
+
+  <!-- ── 6. npm Scripts Reference ───────────────── -->
+  <h2 id="6-npm-scripts-reference">6. npm Scripts Reference</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>Script</th><th>Command</th><th>Purpose</th></tr>
+      </thead>
+      <tbody>
+        <tr><td><code>npm run dev</code></td><td><code>concurrently "npm:dev:server" "npm:dev:client"</code></td><td>Start frontend + backend together</td></tr>
+        <tr><td><code>npm run dev:client</code></td><td><code>vite</code></td><td>Start only the Vite frontend</td></tr>
+        <tr><td><code>npm run dev:server</code></td><td><code>node server/index.js</code></td><td>Start only the API server</td></tr>
+        <tr><td><code>npm run build</code></td><td><code>vite build</code></td><td>Build frontend to <code>/dist</code></td></tr>
+        <tr><td><code>npm run preview</code></td><td><code>vite preview</code></td><td>Preview the production build locally</td></tr>
+        <tr><td><code>npm run lint</code></td><td><code>eslint .</code></td><td>Run ESLint across all files</td></tr>
+        <tr><td><code>npm run server</code></td><td><code>node server/index.js</code></td><td>Alias for dev:server</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr />
+
+  <!-- ── 7. Shell & Batch Script Reference ─────── -->
+  <h2 id="7-shell-batch-script-reference">7. Shell &amp; Batch Script Reference</h2>
+
+  <p>All scripts live in <code>/scripts/</code>. They run from the <strong>project root</strong> regardless of where you call them from.</p>
+
+  <h3><code>start_dev</code> (Windows: <code>.bat</code>, Unix: <code>.sh</code>)</h3>
+  <ol>
+    <li>Creates <code>.run/</code> and <code>logs/</code> directories if missing</li>
+    <li>Installs npm dependencies if <code>node_modules/</code> is absent</li>
+    <li>Checks if already running (reads PID from <code>.run/dev.pid</code>), exits early if so</li>
+    <li>Launches <code>npm run dev</code> as a background process</li>
+    <li>Writes the process PID to <code>.run/dev.pid</code></li>
+    <li>Logs all output to <code>logs/dev.log</code></li>
+  </ol>
+
+  <h3><code>stop_dev</code></h3>
+  <p>Reads <code>.run/dev.pid</code>, kills the process, removes the PID file.</p>
+
+  <h3><code>start_deploy</code></h3>
+  <ol>
+    <li>Runs <code>npm ci</code> (or <code>npm install</code> if no lockfile)</li>
+    <li>Runs <code>npm run build</code></li>
+    <li>Starts <code>node server/index.js</code> with <code>NODE_ENV=production</code></li>
+    <li>Writes PID to <code>.run/deploy.pid</code>, logs to <code>logs/deploy.log</code></li>
+  </ol>
+
+  <h3><code>stop_deploy</code></h3>
+  <p>Reads <code>.run/deploy.pid</code>, kills the process, removes the PID file.</p>
+
+  <hr />
+
+  <!-- ── 8. Frontend ────────────────────────────── -->
+  <h2 id="8-frontend">8. Frontend — <code>src/App.jsx</code></h2>
+
+  <p>Single-file React component. No routing library — one page, one component, multiple conditional sections.</p>
+
+  <h3>Key Constants</h3>
+  <pre><span class="lang-tag">js</span><code>SECTORS          // 12 sectors with id, name, icon, desc, color, sample tickers
+DEFAULT_PROFILE  // { risk: 'Moderate', horizon: '2 years', strategy: 'Growth', cap: 'Large Cap' }
+CONFIG_OPTIONS   // All selectable values per profile dimension
+LOADING_STEPS    // 5-step loading animation labels
+THEMES           // 6 UI themes (id, label, swatch hex)
+API_PROVIDER_OPTIONS  // auto / anthropic / openai
+
+// Storage keys (localStorage)
+REPORT_HISTORY_STORAGE_KEY = 'stocks-scanner-report-history-v1'
+API_PROVIDER_STORAGE_KEY   = 'stocks-scanner-api-provider-v1'
+THEME_STORAGE_KEY          = 'stocks-scanner-theme-v1'
+
+REPORT_CACHE_TTL_MS = 5 * 60 * 1000  // 5 minutes
+MAX_HISTORY_ITEMS   = 20</code></pre>
+
+  <h3>Available Sectors</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>ID</th><th>Name</th><th>Sample Tickers</th></tr></thead>
+      <tbody>
+        <tr><td><code>technology</code></td><td>Technology</td><td>NVDA, MSFT, META, GOOGL, PLTR</td></tr>
+        <tr><td><code>energy</code></td><td>Energy</td><td>XOM, CVX, COP, LNG, NEE</td></tr>
+        <tr><td><code>healthcare</code></td><td>Healthcare</td><td>LLY, UNH, ISRG, ABBV, JNJ</td></tr>
+        <tr><td><code>financials</code></td><td>Financials</td><td>JPM, GS, BRK.B, V, PYPL</td></tr>
+        <tr><td><code>consumer</code></td><td>Consumer</td><td>AMZN, TSLA, MCD, LVMH, SBUX</td></tr>
+        <tr><td><code>industrials</code></td><td>Industrials</td><td>RTX, HON, GE, UPS, CAT</td></tr>
+        <tr><td><code>realestate</code></td><td>Real Estate</td><td>PLD, EQIX, AMT, SPG, O</td></tr>
+        <tr><td><code>materials</code></td><td>Materials</td><td>BHP, FCX, LIN, NEM, ALB</td></tr>
+        <tr><td><code>utilities</code></td><td>Utilities</td><td>NEE, DUK, SO, AWK, CEG</td></tr>
+        <tr><td><code>crypto</code></td><td>Crypto / Web3</td><td>COIN, MSTR, MARA, RIOT, HOOD</td></tr>
+        <tr><td><code>defense</code></td><td>Defense &amp; Space</td><td>LMT, NOC, RTX, SPCE, KTOS</td></tr>
+        <tr><td><code>ai</code></td><td>AI &amp; Robotics</td><td>NVDA, MSFT, PLTR, TSLA, AI</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>State</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>State</th><th>Type</th><th>Persisted</th><th>Purpose</th></tr></thead>
+      <tbody>
+        <tr><td><code>selectedSector</code></td><td>object | null</td><td>No</td><td>Currently selected sector object</td></tr>
+        <tr><td><code>specificTicker</code></td><td>string</td><td>No</td><td>Optional single-ticker mode input</td></tr>
+        <tr><td><code>aiProvider</code></td><td>string</td><td>localStorage</td><td>Selected AI provider (<code>auto</code>/<code>anthropic</code>/<code>openai</code>)</td></tr>
+        <tr><td><code>profile</code></td><td>object</td><td>No</td><td>Investment profile (risk, horizon, strategy, cap)</td></tr>
+        <tr><td><code>isGenerating</code></td><td>boolean</td><td>No</td><td>Whether an API call is in flight</td></tr>
+        <tr><td><code>showReport</code></td><td>boolean</td><td>No</td><td>Whether the report section is visible</td></tr>
+        <tr><td><code>loadingStep</code></td><td>number</td><td>No</td><td>Current loading animation step (0–4)</td></tr>
+        <tr><td><code>reportHtml</code></td><td>string</td><td>No</td><td>Rendered HTML string of the current report</td></tr>
+        <tr><td><code>reportData</code></td><td>object | null</td><td>No</td><td>Raw parsed JSON report from the API</td></tr>
+        <tr><td><code>reportHistory</code></td><td>array</td><td>localStorage</td><td>Up to 20 past report entries</td></tr>
+        <tr><td><code>historyNowTs</code></td><td>number</td><td>No</td><td>Timestamp used to compute relative ages in history</td></tr>
+        <tr><td><code>cacheNotice</code></td><td>string</td><td>No</td><td>Message shown when a cached report is loaded</td></tr>
+        <tr><td><code>theme</code></td><td>string</td><td>localStorage</td><td>Active UI theme id</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Key Functions</h3>
+
+  <h4><code>buildRequestKey(sector, profile, specificTicker, aiProvider, house)</code></h4>
+  <p>Produces a deterministic JSON string key from the request parameters. Used to match incoming requests against cached history entries. The <code>house</code> parameter is included so switching research houses invalidates the cache.</p>
+
+  <h4><code>buildPrompt(sector, profile, specificTicker, house)</code></h4>
+  <p>Constructs the full user-facing prompt sent to the AI. Includes sector, investment profile, the selected research house name, and the complete required JSON schema. In single-ticker mode, instructs the AI to generate exactly 1 stock.</p>
+
+  <h4><code>renderReportHtml(data, profile, house)</code></h4>
+  <p>Takes the parsed AI JSON and <code>profile</code> and returns a fully self-contained HTML string. This string is set as <code>innerHTML</code> of the report section. All values are run through <code>sanitizeForHtml()</code> to prevent XSS. The function renders:</p>
+  <ul>
+    <li>Report header (sector, date, profile metadata)</li>
+    <li>Live market snapshot (SPY, QQQ, VIX, TNX)</li>
+    <li>Macro indicator strip</li>
+    <li>Executive summary table</li>
+    <li>Per-stock deep-dive cards (metrics, revenue trend, price target bar, bull/bear cases, entry zone, consensus bar, risk meter)</li>
+    <li>Disclaimer</li>
+  </ul>
+
+  <h4><code>sanitizeForHtml(value)</code> / <code>escapeHtml(value)</code></h4>
+  <p>Recursively escapes all string values in the report data before they are injected into the HTML string. Prevents any script injection from AI-generated content.</p>
+
+  <h4><code>generateReport()</code></h4>
+  <p>Main async function:</p>
+  <ol>
+    <li>Checks cache — loads from history if a matching non-expired entry exists</li>
+    <li>Sets loading state, fires the API request</li>
+    <li>Parses the response (JSON directly from <code>report</code> field, or extracted from raw text)</li>
+    <li>Saves to history, renders the report</li>
+  </ol>
+
+  <h4><code>loadHistoryEntry(entry)</code> / <code>saveHistoryEntry(entry)</code> / <code>persistHistory(items)</code></h4>
+  <p>History management. <code>persistHistory</code> writes to both React state and localStorage atomically.</p>
+
+  <h4><code>exportReportPdf()</code></h4>
+  <p>Creates a hidden <code>&lt;iframe&gt;</code> off-screen, writes the full report HTML + inlined light-mode CSS overrides + <code>@page { size: auto }</code> into it, and calls <code>iframe.contentWindow.print()</code> on load. The iframe removes itself after the print dialog is closed (<code>afterprint</code> event). No blank tab is opened.</p>
+
+  <h4><code>shareOnWhatsApp()</code></h4>
+  <p>Builds a plain-text summary string and opens <code>https://wa.me/?text=...</code> in a new tab.</p>
+
+  <hr />
+
+  <!-- ── 9. Styling & Theming ───────────────────── -->
+  <h2 id="9-styling-theming">9. Styling &amp; Theming — <code>src/App.css</code></h2>
+
+  <p>All colors are CSS custom properties on <code>:root</code>. No hardcoded colors outside of <code>@media print</code> overrides and the theme-specific override blocks.</p>
+
+  <h3>CSS Custom Properties (default theme)</h3>
+  <pre><span class="lang-tag">css</span><code>:root {
+  --ink:    #0a0c12;   /* Page background */
+  --ink2:   #111520;   /* Card backgrounds */
+  --gold:   #c9963a;   /* Primary accent */
+  --gold2:  #e8b84a;   /* Secondary accent */
+  --gold3:  #f5d070;   /* Tertiary accent / highlights */
+  --silver: #7a8ea8;   /* Muted text, labels */
+  --cream:  #e8dcc8;   /* Light warm accent */
+  --border: rgba(201,150,58,0.2);   /* Card borders */
+  --border2: rgba(201,150,58,0.08); /* Subtle borders */
+  --text:   #c8d0dc;   /* Body text */
+  --text2:  #7a8ea8;   /* Secondary text */
+  --green:  #2ecc8a;   /* Positive / Buy */
+  --red:    #e05060;   /* Negative / Sell */
+  --blue:   #4a9fd4;   /* Info / Buy badge */
+  --purple: #a070d8;   /* Supplementary */
+  --orange: #e07a30;   /* Warning */
+  --teal:   #30c4b0;   /* Supplementary */
+  --r:      4px;       /* Base border-radius */
+}</code></pre>
+
+  <h3>Themes</h3>
+  <p>Themes are applied by setting <code>data-theme</code> on <code>&lt;html&gt;</code>. The default theme has no <code>data-theme</code> attribute. Switch between them using the colour swatches in the top-right corner of the app header.</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Theme ID</th><th><code>data-theme</code> value</th><th>Character</th></tr></thead>
+      <tbody>
+        <tr><td><code>default</code></td><td><em>(none)</em></td><td>Goldman Sachs dark gold</td></tr>
+        <tr><td><code>bloomberg</code></td><td><code>bloomberg</code></td><td>Black terminal, amber, monospace font</td></tr>
+        <tr><td><code>paper</code></td><td><code>paper</code></td><td>Warm white, ink-brown, newspaper feel</td></tr>
+        <tr><td><code>cyber</code></td><td><code>cyber</code></td><td>Near-black, cyan/magenta neon glows</td></tr>
+        <tr><td><code>forest</code></td><td><code>forest</code></td><td>Dark green, leaf accents, ESG palette</td></tr>
+        <tr><td><code>hc</code></td><td><code>hc</code></td><td>Pure black + yellow, maximum contrast</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <p>Each theme block overrides the full set of <code>--ink</code>, <code>--gold</code>, <code>--text</code>, <code>--green</code>, <code>--red</code> etc. variables and also patches specific elements (<code>.header</code>, <code>.bg-glow-1</code>, <code>.bg-glow-2</code>, <code>.hero-title</code>, <code>.rpt-title</code>, <code>.generate-btn</code>) that use hardcoded colors.</p>
+
+  <h3>Print Styles</h3>
+  <p>The <code>@media print</code> block at the bottom of App.css handles direct browser printing (if someone uses <code>Ctrl+P</code> while the app is open). For the PDF export button, the print CSS is inlined into the iframe and overridden with a light-mode <code>:root</code> variable block. Key rules:</p>
+  <ul>
+    <li><code>@page { margin: 15mm }</code> — no forced orientation; user controls it in the print dialog</li>
+    <li>Hide all UI chrome (header, hero, config, history, generate sections)</li>
+    <li>Force white backgrounds and dark text on all report elements</li>
+    <li><code>overflow: visible</code> on <code>.summary-wrap</code> and <code>.table-scroll</code> so the full table prints</li>
+    <li><code>break-inside: avoid</code> on <code>.scard</code> and <code>.rpt-header</code> to prevent mid-card page breaks</li>
+    <li><code>.cards-grid { grid-template-columns: 1fr 1fr }</code> — 2-column card layout for print</li>
+  </ul>
+
+  <hr />
+
+  <!-- ── 10. Backend ────────────────────────────── -->
+  <h2 id="10-backend">10. Backend — <code>server/index.js</code></h2>
+
+  <p>Pure ES module (<code>"type": "module"</code> in <code>package.json</code>). No TypeScript. No ORM.</p>
+
+  <h3>Module-level Configuration</h3>
+  <p>All configuration is read from <code>process.env</code> at startup:</p>
+  <pre><span class="lang-tag">js</span><code>port            = process.env.PORT || 8787
+defaultAiProvider = process.env.AI_PROVIDER || 'anthropic'
+anthropicApiKey = process.env.ANTHROPIC_API_KEY
+anthropicModel  = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+openAiApiKey    = process.env.OPENAI_API_KEY
+openAiModel     = process.env.OPENAI_MODEL || 'gpt-4.1-mini'
+openAiBaseUrl   = process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1'
+isProduction    = process.env.NODE_ENV === 'production'</code></pre>
+
+  <h3>System Prompt</h3>
+  <p>Generated dynamically by <code>buildSystemPrompt(houseName)</code> using the research house name sent from the client:</p>
+  <pre><span class="lang-tag">text</span><code>You are a senior equity analyst at {houseName} with 20 years of experience.
+You produce detailed, professional equity research screening reports in strict JSON format.
+You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks.
+The JSON must be complete and parseable.</code></pre>
+  <p>This is sent as the <code>system</code> field (Anthropic) or <code>{ role: 'system' }</code> message (OpenAI). If <code>houseName</code> is absent or invalid, it defaults to <code>'Goldman Sachs'</code>.</p>
+
+  <h3><code>requestAnthropic(prompt, houseName)</code></h3>
+  <ul>
+    <li>Tries models in order: configured model → <code>claude-sonnet-4-20250514</code> → <code>claude-3-7-sonnet-latest</code> → <code>claude-3-5-sonnet-latest</code></li>
+    <li>Stops retrying if the failure is not a model-not-found error</li>
+    <li>Returns <code>{ ok, status, raw, content, provider, modelUsed }</code> or <code>{ ok: false, error, ... }</code></li>
+  </ul>
+
+  <h3><code>requestOpenAiCompatible(prompt, houseName)</code></h3>
+  <ul>
+    <li>Single request to <code>${openAiBaseUrl}/chat/completions</code></li>
+    <li>Temperature: <code>0.2</code> for consistent structured output</li>
+    <li>Returns same shape as <code>requestAnthropic</code></li>
+  </ul>
+
+  <h3>Provider Selection Logic</h3>
+  <pre><span class="lang-tag">text</span><code>aiProvider from client → normalizeProviderName()
+                           ↓
+if 'openai'  → requestOpenAiCompatible()
+if 'anthropic' → requestAnthropic()
+               → if credit error AND openAiApiKey present → fallback to requestOpenAiCompatible()
+if 'auto'    → requestAnthropic()
+               → if any error AND openAiApiKey present → fallback to requestOpenAiCompatible()</code></pre>
+
+  <h3><code>normalizeProviderName(value)</code></h3>
+  <p>Maps loose provider strings to canonical values:</p>
+  <ul>
+    <li><code>'anthropic'</code> or <code>'claude'</code> → <code>'anthropic'</code></li>
+    <li><code>'openai'</code>, <code>'chatgpt'</code>, <code>'other'</code>, <code>'custom'</code>, <code>'openai-compatible'</code> → <code>'openai'</code></li>
+    <li><code>'auto'</code> → <code>'auto'</code></li>
+    <li>Anything else → <code>null</code> (triggers 400 error)</li>
+  </ul>
+
+  <hr />
+
+  <!-- ── 11. API Reference ───────────────────────── -->
+  <h2 id="11-api-reference">11. API Reference</h2>
+
+  <h3><code>GET /api/health</code></h3>
+  <p>Returns server status and available providers.</p>
+  <pre><span class="lang-tag">json</span><code>{
+  "ok": true,
+  "defaultProvider": "anthropic",
+  "providers": ["auto", "anthropic", "openai"]
+}</code></pre>
+
+  <h3><code>POST /api/research-report</code></h3>
+  <p>Generates an AI equity research report, enriched with live market data.</p>
+
+  <p><strong>Request body:</strong></p>
+  <pre><span class="lang-tag">json</span><code>{
+  "prompt": "string — full prompt built by buildPrompt() on the client",
+  "sector": "string — sector id (e.g. 'technology')",
+  "profile": {
+    "risk": "Moderate",
+    "horizon": "2 years",
+    "strategy": "Growth",
+    "cap": "Large Cap"
+  },
+  "aiProvider": "auto | anthropic | openai",
+  "house": "Goldman Sachs",
+  "ticker": "NVDA"
+}</code></pre>
+  <ul>
+    <li><code>prompt</code> takes precedence. If omitted, a basic prompt is synthesized from <code>sector</code> + <code>profile</code>.</li>
+    <li><code>house</code> is the full display name of the selected research house (e.g. <code>"JPMorgan"</code>, <code>"Morgan Stanley"</code>). Defaults to <code>"Goldman Sachs"</code> if omitted.</li>
+    <li><code>ticker</code> is informational; the single-ticker instruction is embedded in the prompt by the client.</li>
+  </ul>
+
+  <p><strong>Response (success):</strong></p>
+  <pre><span class="lang-tag">json</span><code>{
+  "report": { },
+  "raw": "raw model text",
+  "content": [{ "type": "text", "text": "..." }],
+  "providerUsed": "anthropic",
+  "modelUsed": "claude-sonnet-4-20250514"
+}</code></pre>
+
+  <p><strong>Response (error):</strong></p>
+  <pre><span class="lang-tag">json</span><code>{
+  "error": "Human-readable error message",
+  "provider": "anthropic",
+  "modelTried": "claude-sonnet-4-20250514"
+}</code></pre>
+
+  <p><strong>Status codes:</strong></p>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Code</th><th>Meaning</th></tr></thead>
+      <tbody>
+        <tr><td><code>200</code></td><td>Success</td></tr>
+        <tr><td><code>400</code></td><td>Missing prompt or invalid <code>aiProvider</code></td></tr>
+        <tr><td><code>500</code></td><td>Server misconfiguration (missing API key) or unexpected error</td></tr>
+        <tr><td><code>502</code></td><td>Upstream AI provider returned an error</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr />
+
+  <!-- ── 12. AI Prompt System ───────────────────── -->
+  <h2 id="12-ai-prompt-system">12. AI Prompt System</h2>
+
+  <h3>Prompt Structure</h3>
+  <p><code>buildPrompt(sector, profile, specificTicker, house)</code> in <code>App.jsx</code> generates:</p>
+  <pre><span class="lang-tag">text</span><code>You are a senior {houseName} equity analyst. Generate a comprehensive
+[single-stock report centered on {TICKER} within | stock screening report for]
+the {SECTOR} sector.
+
+Investment profile:
+- Risk tolerance: {risk}
+- Horizon: {horizon}
+- Strategy: {strategy}
+- Market cap focus: {cap}
+
+Return ONLY a valid JSON object with this exact structure (no markdown, no backticks):
+{ ... full schema ... }
+
+Requirements:
+- Generate exactly [1 | 10] stocks
+- Use real, well-known ticker data
+- All numbers should be realistic and grounded in current market data as of early 2026
+...</code></pre>
+
+  <h3>Required AI JSON Schema</h3>
+  <p>The AI must return exactly this structure. All fields are required:</p>
+  <pre><span class="lang-tag">jsonc</span><code>{
+  "sectorName": "string",
+  "sectorTheme": "string — one-sentence 2026 investment thesis",
+  "macro": [
+    // 5 items required
+    {
+      "label": "string",
+      "value": "string",
+      "change": "string",
+      "direction": "up | down | neutral"
+    }
+  ],
+  "stocks": [
+    // 10 items required (1 in single-ticker mode)
+    {
+      "ticker": "string",
+      "company": "string",
+      "subsector": "string",
+      "rating": "STRONG BUY | BUY | HOLD",
+      "pe": "string",                  // e.g. "~32 x fwd"
+      "sectorAvgPe": "string",
+      "revGrowth": "string",           // e.g. "+22%"
+      "revGrowthPositive": true,       // boolean
+      "revBars": [65, 72, 80, 88, 95],// 5 values, each 0–100 (2021–2025 revenue trend)
+      "de": "string",
+      "deNote": "string",
+      "divYield": "string",
+      "divNote": "string",
+      "moat": "Strong | Moderate | Weak",
+      "bullTarget": "$XXX",
+      "bearTarget": "$XXX",
+      "currentPrice": "$XXX",
+      "bullPct": 75,                   // 0–100
+      "bearPct": 20,                   // 0–100; must satisfy bearPct &lt; currentPct &lt; bullPct
+      "currentPct": 50,                // 0–100
+      "bullCase": "string",
+      "bearCase": "string",
+      "entryLow": "$XXX",
+      "entryHigh": "$XXX",
+      "stopLoss": "$XXX",
+      "risk": 6,                       // integer 1–10
+      "riskNote": "string",
+      "buyPct": 65,                    // 0–100; buyPct + holdPct + sellPct must equal 100
+      "holdPct": 25,                   // 0–100
+      "sellPct": 10,                   // 0–100
+      "analystNote": "string",
+      "catalysts": ["string", "string", "string", "string"]
+    }
+  ],
+  "disclaimer": "string"
+}</code></pre>
+
+  <p><strong>Constraints enforced in the prompt:</strong></p>
+  <ul>
+    <li><code>buyPct + holdPct + sellPct</code> must sum to 100</li>
+    <li><code>bearPct &lt; currentPct &lt; bullPct</code></li>
+    <li><code>revBars</code> is a 5-element array of 0–100 values (2021–2025 relative revenue trend)</li>
+    <li><code>risk</code> is an integer 1–10</li>
+  </ul>
+
+  <hr />
+
+  <!-- ── 13. Live Market Data ───────────────────── -->
+  <h2 id="13-live-market-data">13. Live Market Data — Yahoo Finance</h2>
+
+  <h3><code>fetchYahooQuotes(tickers)</code></h3>
+  <p>Fetches real-time quotes for an array of ticker symbols.</p>
+
+  <p><strong>Primary endpoint:</strong></p>
+  <pre><span class="lang-tag">text</span><code>https://query1.finance.yahoo.com/v7/finance/quote?symbols={comma-separated}</code></pre>
+
+  <p><strong>Fallback (per-symbol, for any missing from the primary):</strong></p>
+  <pre><span class="lang-tag">text</span><code>https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&amp;range=1d</code></pre>
+
+  <p><strong>Per-quote data collected:</strong></p>
+  <ul>
+    <li><code>price</code> — <code>regularMarketPrice</code></li>
+    <li><code>changePct</code> — <code>regularMarketChangePercent</code></li>
+    <li><code>change</code> — <code>regularMarketChange</code></li>
+    <li><code>currency</code></li>
+    <li><code>asOf</code> — ISO timestamp from <code>regularMarketTime</code></li>
+    <li><code>marketState</code> — e.g. <code>REGULAR</code>, <code>PRE</code>, <code>POST</code></li>
+  </ul>
+
+  <p><strong>Ticker normalisation:</strong> <code>.</code> → <code>-</code> (e.g. <code>BRK.B</code> → <code>BRK-B</code> for Yahoo)</p>
+
+  <h3>Benchmark Tickers</h3>
+  <p>Always fetched alongside stock tickers:</p>
+  <ul>
+    <li><code>SPY</code> — S&amp;P 500 ETF</li>
+    <li><code>QQQ</code> — Nasdaq 100 ETF</li>
+    <li><code>^VIX</code> — CBOE Volatility Index</li>
+    <li><code>^TNX</code> — 10-Year Treasury Yield</li>
+  </ul>
+  <p>These appear in the <strong>Live Market Snapshot</strong> strip at the top of every report.</p>
+
+  <h3><code>reconcileTargetsWithLivePrice(stock, livePrice)</code></h3>
+  <p>The AI generates price targets based on training data (potentially stale). This function adjusts them to the live price:</p>
+  <ol>
+    <li><strong>If model prices are coherent</strong> (<code>bear &lt; current &lt; bull</code>): scale bull and bear targets by <code>livePrice / modelCurrentPrice</code>, preserving the same upside/downside ratios. Entry zone and stop loss are also scaled by the same ratio.</li>
+    <li><strong>If model prices are incoherent</strong> (or missing): generate fallback targets from rating:
+      <ul>
+        <li>STRONG BUY: bull = live × 1.30, bear = live × 0.85</li>
+        <li>BUY: bull = live × 1.20, bear = live × 0.88</li>
+        <li>HOLD: bull = live × 1.12, bear = live × 0.90</li>
+      </ul>
+    </li>
+    <li>Always overwrites <code>currentPrice</code> with the live price.</li>
+  </ol>
+
+  <hr />
+
+  <!-- ── 14. Report Caching & History ──────────── -->
+  <h2 id="14-report-caching">14. Report Caching &amp; History</h2>
+
+  <h3>Cache Key</h3>
+  <pre><span class="lang-tag">js</span><code>buildRequestKey(sector, profile, specificTicker, aiProvider, house)
+// → JSON string of { sectorId, profile: { risk, horizon, strategy, cap }, aiProvider, ticker, houseId }</code></pre>
+  <p>Two requests with the same sector, profile, ticker, provider, <em>and house</em> produce the same key. Switching research houses forces a fresh API call even if all other parameters match.</p>
+
+  <h3>Cache TTL</h3>
+  <p>5 minutes (<code>REPORT_CACHE_TTL_MS = 5 * 60 * 1000</code>). If a matching history entry is found that is less than 5 minutes old, it is loaded directly without an API call. A <code>cacheNotice</code> message is shown to the user.</p>
+
+  <h3>History Storage</h3>
+  <ul>
+    <li>Key: <code>stocks-scanner-report-history-v1</code> in <code>localStorage</code></li>
+    <li>Format: JSON array of history entry objects</li>
+    <li>Max entries: 20 (<code>MAX_HISTORY_ITEMS</code>). Oldest entries are dropped when the limit is exceeded.</li>
+    <li>Same-key entries are deduplicated (only the newest is kept)</li>
+  </ul>
+
+  <h3>History Entry Shape</h3>
+  <pre><span class="lang-tag">jsonc</span><code>{
+  "id": "1746200000000-abc123",
+  "requestKey": "...",
+  "createdAt": 1746200000000,
+  "sectorId": "technology",
+  "sectorName": "Technology",
+  "specificTicker": "",
+  "aiProvider": "anthropic",
+  "houseId": "goldman",
+  "profile": { "risk": "Moderate", "horizon": "2 years", "strategy": "Growth", "cap": "Large Cap" },
+  "report": { /* full enriched report object from /api/research-report */ }
+}</code></pre>
+  <p><code>houseId</code> is the short identifier of the research house used to generate the report (e.g. <code>"jpmorgan"</code>, <code>"morgan"</code>, <code>"blackrock"</code>). It is restored when loading a history entry so the UI reflects which house produced the report.</p>
+
+  <hr />
+
+  <!-- ── 15. PDF Export ─────────────────────────── -->
+  <h2 id="15-pdf-export">15. PDF Export</h2>
+
+  <p>Triggered by the <strong>Export PDF</strong> button in the report actions bar.</p>
+
+  <h3>Approach: Hidden Iframe</h3>
+  <pre><span class="lang-tag">text</span><code>exportReportPdf()
+  │
+  ├── Collect all CSS rules from document.styleSheets (catches Vite-injected styles)
+  │
+  ├── Create &lt;iframe&gt; positioned at top:-9999px (invisible, off-screen)
+  │
+  ├── Write into iframe:
+  │     - All collected CSS (so all class styles are available)
+  │     - @page { size: auto; margin: 15mm } — lets user choose orientation/zoom
+  │     - Light-mode :root override (--ink: #fff, --text: #111, etc.)
+  │     - Display:none for all UI chrome
+  │     - overflow: visible on summary-wrap / table-scroll
+  │     - break-inside: avoid on .scard
+  │     - Light-mode color overrides for badges, tickers, pos/neg colors
+  │     - The reportHtml string
+  │
+  ├── On iframe load: call iframe.contentWindow.print()
+  │
+  └── On afterprint: remove iframe from DOM</code></pre>
+
+  <p><strong>Why iframe over <code>window.open</code>:</strong> A new tab (even <code>window.open('', '_blank')</code>) appears briefly as a blank page before being filled. A hidden iframe is never visible to the user.</p>
+  <p><strong>Why no forced <code>size: A4 landscape</code>:</strong> The <code>@page size</code> rule locks the print dialog's orientation dropdown to the specified value, preventing the user from changing it. <code>size: auto</code> defers to the OS print dialog defaults, giving full control.</p>
+
+  <hr />
+
+  <!-- ── 16. Security Practices ────────────────── -->
+  <h2 id="16-security-practices">16. Security Practices</h2>
+
+  <h3>XSS Prevention</h3>
+  <p>All AI-generated text is processed through <code>sanitizeForHtml()</code> before being injected into the report HTML string. This function recursively calls <code>escapeHtml()</code> on every string value in the report object, escaping <code>&amp;</code>, <code>&lt;</code>, <code>&gt;</code>, <code>"</code>, and <code>'</code>. No raw AI output reaches the DOM unescaped.</p>
+
+  <h3>API Key Protection</h3>
+  <p>API keys live in <code>.env</code> (server-side only) and are never sent to the browser. The Vite proxy (<code>/api/*</code> → <code>http://localhost:8787</code>) means the browser only ever talks to <code>localhost</code>; it never holds or sends provider credentials.</p>
+
+  <h3>Input Validation</h3>
+  <ul>
+    <li><code>aiProvider</code> is validated through <code>normalizeProviderName()</code> — any unrecognised value returns a 400</li>
+    <li><code>prompt</code> is trimmed and length-limited by <code>express.json({ limit: '1mb' })</code></li>
+    <li>Ticker symbols on the client are filtered to <code>[A-Z0-9.-]</code> only before being sent</li>
+  </ul>
+
+  <h3>No Eval / No Dynamic Code</h3>
+  <p>No <code>eval()</code>, <code>Function()</code>, or <code>innerHTML</code> on user-supplied raw strings. The only <code>innerHTML</code> usage is in the report section, and the content has been fully sanitized.</p>
+
+  <hr />
+
+  <!-- ── 17. Deployment ─────────────────────────── -->
+  <h2 id="17-deployment">17. Deployment</h2>
+
+  <h3>Production Build</h3>
+  <pre><span class="lang-tag">bash</span><code>npm run build          # outputs to /dist
+NODE_ENV=production node server/index.js</code></pre>
+  <p>Express serves <code>/dist</code> as static files and handles <code>/api/*</code> routes. All non-API GET routes serve <code>index.html</code> for client-side routing.</p>
+
+  <h3>Using the Deploy Script (Windows)</h3>
+  <pre><span class="lang-tag">bat</span><code>scripts\start_deploy.bat</code></pre>
+  <p>This runs <code>npm ci</code> → <code>npm run build</code> → starts the server in the background with <code>NODE_ENV=production</code>. Server PID is saved to <code>.run/deploy.pid</code>. Logs go to <code>logs/deploy.log</code>.</p>
+
+  <h3>Port Configuration</h3>
+  <p>Default port is <code>8787</code>. Override with the <code>PORT</code> environment variable:</p>
+  <pre><span class="lang-tag">env</span><code>PORT=3000</code></pre>
+
+  <h3>Reverse Proxy (nginx example)</h3>
+  <pre><span class="lang-tag">nginx</span><code>server {
+    listen 80;
+    server_name yourdomain.com;
+
+    location / {
+        proxy_pass http://localhost:8787;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection 'upgrade';
+        proxy_set_header Host $host;
+        proxy_cache_bypass $http_upgrade;
+    }
+}</code></pre>
+
+  <hr />
+
+  <!-- ── 18. Codebase Conventions ──────────────── -->
+  <h2 id="18-codebase-conventions">18. Codebase Conventions</h2>
+  <ul>
+    <li><strong>ES Modules throughout</strong> — both frontend (<code>import/export</code>) and backend (<code>"type": "module"</code>)</li>
+    <li><strong>No TypeScript</strong> — plain JavaScript with JSDoc-style variable names</li>
+    <li><strong>Single-file frontend</strong> — all logic in <code>App.jsx</code>, all styles in <code>App.css</code>. No component splitting.</li>
+    <li><strong>No external UI libraries</strong> — everything is custom HTML + CSS</li>
+    <li><strong>Functional React only</strong> — no class components; hooks only (<code>useState</code>, <code>useEffect</code>, <code>useMemo</code>, <code>useRef</code>)</li>
+    <li><strong>All colors via CSS variables</strong> — never hardcode a hex in JSX inline styles for themed values</li>
+    <li><strong>All AI output sanitized</strong> — never inject raw model text into the DOM</li>
+    <li><strong>localStorage wrapped in try/catch</strong> — privacy mode or quota errors are silently swallowed</li>
+    <li><strong>Server functions are pure</strong> — <code>requestAnthropic</code>, <code>requestOpenAiCompatible</code>, <code>enrichReportWithLiveMarketData</code> take inputs and return outputs with no side effects</li>
+    <li><strong>Errors surface as human-readable messages</strong> — never expose stack traces or raw error objects to the browser</li>
+  </ul>
+
+  <hr />
+
+  <!-- ── 19. Known Limitations ─────────────────── -->
+  <h2 id="19-known-limitations">19. Known Limitations</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Limitation</th><th>Detail</th></tr></thead>
+      <tbody>
+        <tr><td>No authentication</td><td>The API server has no auth. Do not expose port 8787 directly to the internet in production — always put it behind a reverse proxy.</td></tr>
+        <tr><td>Yahoo Finance rate limits</td><td>No official API key required, but heavy use may result in temporary IP blocks. The app has no retry logic for Yahoo Finance failures — stocks with failed lookups simply keep their AI-generated prices.</td></tr>
+        <tr><td>AI JSON reliability</td><td>Occasionally the model returns malformed JSON. The server attempts a regex-based JSON extraction as a fallback. If that also fails, the frontend shows an error message.</td></tr>
+        <tr><td>localStorage size</td><td>Very large reports (10 stocks × full deep-dives) can approach 100–200 KB per entry. At 20 history items this is 2–4 MB, close to the typical 5 MB localStorage quota.</td></tr>
+        <tr><td>No real-time streaming</td><td>Reports are fetched as a single response. No streaming or SSE. Users see a stepped loading animation during the request.</td></tr>
+        <tr><td>Single-page, no URL state</td><td>Sector, profile, and report state are not reflected in the URL. Deep-linking to a specific report is not possible.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr />
+
+  <!-- ── 20. Changelog ─────────────────────────── -->
+  <h2 id="20-changelog">20. Changelog (key milestones)</h2>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Date</th><th>Change</th></tr></thead>
+      <tbody>
+        <tr><td>Initial</td><td>Migrated original single-file HTML app into React + Vite + Express architecture</td></tr>
+        <tr><td>Early 2026</td><td>AI provider selection added (Anthropic / OpenAI-compatible / Auto)</td></tr>
+        <tr><td>Early 2026</td><td>Live Yahoo Finance price enrichment added</td></tr>
+        <tr><td>Early 2026</td><td>Price target + entry zone reconciliation against live prices</td></tr>
+        <tr><td>Early 2026</td><td>Per-item history delete (× button on each history card)</td></tr>
+        <tr><td>Early 2026</td><td>Safari <code>-webkit-backdrop-filter</code> compatibility fix</td></tr>
+        <tr><td>Apr 2026</td><td>PDF export rewritten — dedicated print window with full report HTML</td></tr>
+        <tr><td>May 2026</td><td>PDF export switched to hidden iframe — no blank tab, user controls orientation/zoom</td></tr>
+        <tr><td>May 2026</td><td>6 UI themes implemented (Goldman Dark, Bloomberg Terminal, Paper/Light, Cyber Neon, Forest ESG, High Contrast) with persistent theme switcher in header</td></tr>
+        <tr><td>May 2026</td><td><code>start_dev.bat</code> / <code>start_deploy.bat</code> PowerShell redirect error fixed</td></tr>
+        <tr><td>May 2026</td><td>Research House selector added — switch AI analyst persona between Goldman Sachs, JPMorgan, Morgan Stanley, BlackRock, Citadel Securities, and Bridgewater Associates. Selection is persisted to localStorage, included in cache key, and saved per history entry.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <hr />
+  <p class="doc-footer">
+    StocksScanner Technical Documentation &mdash; May 2026
+  </p>
+
+</main>
+
+<script>
+  // Highlight active sidebar link on scroll
+  const sections = document.querySelectorAll('h2[id]');
+  const links = document.querySelectorAll('nav#sidebar a');
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        links.forEach(l => l.classList.remove('active'));
+        const active = document.querySelector(`nav#sidebar a[href="#${entry.target.id}"]`);
+        if (active) active.classList.add('active');
+      }
+    });
+  }, { rootMargin: '-20% 0px -70% 0px' });
+
+  sections.forEach(s => observer.observe(s));
+</script>
+
+</body>
+</html>

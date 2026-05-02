@@ -66,7 +66,53 @@ const THEMES = [
   { id: 'hc',        label: 'High Contrast',        swatch: '#ffffff' },
 ]
 
-function buildRequestKey(sector, profile, specificTicker, aiProvider) {
+const HOUSE_STORAGE_KEY = 'stocks-scanner-house-v1'
+const HOUSES = [
+  {
+    id: 'goldman',
+    fullName: 'Goldman Sachs',
+    division: 'Global Investment Research',
+    shortLabel: 'Goldman',
+    promptStyle: `Apply Goldman Sachs GIR methodology: top-down macro overlay combined with bottom-up fundamental analysis. Lead with EPS revision momentum and DCF-derived 12-month price targets. Frame ratings in GS Conviction style — STRONG BUY for highest-conviction names, BUY for solid upside, HOLD otherwise. Emphasise return on equity, margin trajectory, and quality-of-earnings metrics. The analystNote should reference GS Research consensus and specific sell-side price targets from the GS Conviction List.`,
+  },
+  {
+    id: 'jpmorgan',
+    fullName: 'JPMorgan',
+    division: 'Global Research',
+    shortLabel: 'JPMorgan',
+    promptStyle: `Apply JPMorgan Global Research sector-relative methodology. Prioritise FCF yield, PEG ratios, and earnings revision cycles as primary signals. Frame the analystNote around JPMorgan's sector-rotation model — note whether the name is a sector leader or laggard on earnings revisions. Catalysts should focus on earnings beats, macro inflection points, and sector fund flows. Use STRONG BUY for high-conviction Overweight, BUY for Overweight, HOLD for Neutral. Emphasise relative performance vs sector benchmark over absolute returns.`,
+  },
+  {
+    id: 'morgan',
+    fullName: 'Morgan Stanley',
+    division: 'Global Equity Research',
+    shortLabel: 'M. Stanley',
+    promptStyle: `Apply Morgan Stanley Blue Paper methodology: structural long-duration thematic investing. Frame bullCase and bearCase as explicit Bull/Base/Bear scenarios with distinct multi-year narratives. Emphasise total addressable market (TAM) expansion, platform network effects, and margin inflection paths. The analystNote should reference Morgan Stanley's secular megatrends (AI infrastructure, energy transition, healthcare innovation, digital payments). Focus on 2–3 year transformative narratives; discount near-term noise. Use STRONG BUY for high-conviction structural winners.`,
+  },
+  {
+    id: 'blackrock',
+    fullName: 'BlackRock',
+    division: 'Investment Institute',
+    shortLabel: 'BlackRock',
+    promptStyle: `Apply BlackRock Investment Institute factor-based systematic methodology. Score each stock on four factors: Quality (ROE/ROIC), Momentum (price + earnings revision), Low Volatility, and Value (FCF yield). Emphasise risk-adjusted returns — note Sharpe ratio potential and maximum drawdown risk in riskNote. Integrate ESG quality signals into deNote and divNote where relevant. The analystNote should reflect BlackRock's multi-factor model output, note any factor crowding risks, and reference the BII's current regime positioning (risk-on vs risk-off).`,
+  },
+  {
+    id: 'citadel',
+    fullName: 'Citadel Securities',
+    division: 'Quantitative Research',
+    shortLabel: 'Citadel',
+    promptStyle: `Apply Citadel Securities quantitative and event-driven research methodology. For each stock assess: earnings surprise probability (beat/miss likelihood vs consensus), short interest as a contrarian signal, and options implied volatility as a risk proxy. Frame bullCase and bearCase with statistical confidence language (e.g. "high-probability setup", "asymmetric risk/reward"). Catalysts must include alternative data signals — card-spend trends, web traffic, satellite data, or earnings-whisper numbers where applicable. The analystNote should reflect quant model signals and near-term alpha generation thesis.`,
+  },
+  {
+    id: 'bridgewater',
+    fullName: 'Bridgewater Associates',
+    division: 'All Weather Research',
+    shortLabel: 'Bridgewater',
+    promptStyle: `Apply Bridgewater Associates All Weather and Pure Alpha methodology. Frame all picks through the macro growth/inflation quadrant: identify whether the current regime (inflationary growth, deflationary contraction, stagflation, or reflation) favours each name. Emphasise debt-cycle positioning — note each company's sensitivity to credit conditions and real interest rates. Focus on inflation-adjusted (real) returns and currency exposure. The analystNote should reference Bridgewater's economic machine principles: balance, diversification, and macro-regime resilience. Prefer stocks that hold value across multiple macro scenarios over single-catalyst bets.`,
+  },
+]
+
+function buildRequestKey(sector, profile, specificTicker, aiProvider, house) {
   const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
   return JSON.stringify({
     sectorId: sector?.id || '',
@@ -77,6 +123,7 @@ function buildRequestKey(sector, profile, specificTicker, aiProvider) {
       cap: profile?.cap || '',
     },
     aiProvider: aiProvider || 'auto',
+    houseId: house?.id || 'goldman',
     ticker: normalizedTicker,
   })
 }
@@ -110,11 +157,16 @@ function sanitizeForHtml(value) {
   return value
 }
 
-function buildPrompt(sector, profile, specificTicker) {
+function buildPrompt(sector, profile, specificTicker, house) {
   const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
   const isSingleStockMode = Boolean(normalizedTicker)
+  const houseName = house?.fullName || 'Goldman Sachs'
+  const houseStyle = house?.promptStyle || ''
 
-  return `You are a senior Goldman Sachs equity analyst. Generate a comprehensive ${isSingleStockMode ? `single-stock report centered on ${normalizedTicker} within` : 'stock screening report for'} the ${sector.name} sector.
+  return `You are a senior ${houseName} equity analyst. Generate a comprehensive ${isSingleStockMode ? `single-stock report centered on ${normalizedTicker} within` : 'stock screening report for'} the ${sector.name} sector.
+
+Research House Methodology:
+${houseStyle}
 
 Investment profile:
 - Risk tolerance: ${profile.risk}
@@ -186,10 +238,11 @@ Requirements:
 - moat: "Strong", "Moderate", or "Weak"`
 }
 
-function renderReportHtml(data, profile) {
+function renderReportHtml(data, profile, house) {
   const safeData = sanitizeForHtml(data || {})
   const safeProfile = sanitizeForHtml(profile || {})
   const dateStr = new Date().toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+  const houseEyebrow = house ? `${house.fullName} · ${house.division}` : 'Goldman Sachs · Global Investment Research'
 
   const ratingBadge = (rating) => {
     if (rating === 'STRONG BUY') return '<span class="badge badge-sb">STRONG BUY</span>'
@@ -335,7 +388,7 @@ function renderReportHtml(data, profile) {
     <div class="report-output" style="animation: fadeUp 0.5s ease both">
       <div class="rpt-header">
         <div class="rpt-title-block">
-          <div class="rpt-eyebrow">Goldman Sachs · Global Investment Research</div>
+          <div class="rpt-eyebrow">${houseEyebrow}</div>
           <div class="rpt-title">${safeData.sectorName} Sector Research</div>
           <div class="rpt-sub">${safeData.sectorTheme}</div>
         </div>
@@ -419,6 +472,18 @@ function App() {
       return 'default'
     }
   })
+  const [house, setHouse] = useState(() => {
+    try {
+      const saved = localStorage.getItem(HOUSE_STORAGE_KEY)
+      if (saved) {
+        const found = HOUSES.find((h) => h.id === saved)
+        if (found) return found
+      }
+      return HOUSES[0]
+    } catch {
+      return HOUSES[0]
+    }
+  })
 
   const headerDate = useMemo(() => {
     const now = new Date()
@@ -466,6 +531,14 @@ function App() {
     }
   }, [theme])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(HOUSE_STORAGE_KEY, house.id)
+    } catch {
+      // Ignore localStorage quota or privacy mode errors.
+    }
+  }, [house])
+
   const updateProfile = (group, value) => {
     setProfile((prev) => ({ ...prev, [group]: value }))
   }
@@ -490,9 +563,11 @@ function App() {
     if (sector) setSelectedSector(sector)
     setSpecificTicker(entry.specificTicker || '')
     setAiProvider(entry.aiProvider || 'auto')
+    const entryHouse = HOUSES.find((h) => h.id === entry.houseId) || HOUSES[0]
+    setHouse(entryHouse)
     setProfile(entry.profile || DEFAULT_PROFILE)
     setReportData(entry.report || null)
-    setReportHtml(renderReportHtml(entry.report || {}, entry.profile || DEFAULT_PROFILE))
+    setReportHtml(renderReportHtml(entry.report || {}, entry.profile || DEFAULT_PROFILE, entryHouse))
     setShowReport(true)
     setCacheNotice(`Loaded from history (${formatAge(Date.now() - entry.createdAt)}).`)
   }
@@ -632,7 +707,7 @@ ${reportHtml}
   const generateReport = async () => {
     if (!selectedSector || isGenerating) return
 
-    const requestKey = buildRequestKey(selectedSector, profile, specificTicker, aiProvider)
+    const requestKey = buildRequestKey(selectedSector, profile, specificTicker, aiProvider, house)
     const recent = reportHistory.find((entry) => entry.requestKey === requestKey)
     if (recent && Date.now() - recent.createdAt <= REPORT_CACHE_TTL_MS) {
       loadHistoryEntry(recent)
@@ -647,7 +722,7 @@ ${reportHtml}
     setCacheNotice('')
 
     try {
-      const prompt = buildPrompt(selectedSector, profile, specificTicker)
+      const prompt = buildPrompt(selectedSector, profile, specificTicker, house)
       const res = await fetch(REPORT_API_URL, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -656,6 +731,7 @@ ${reportHtml}
           sector: selectedSector.id,
           profile,
           aiProvider,
+          house: house.fullName,
           ticker: specificTicker.trim().toUpperCase(),
         }),
       })
@@ -695,13 +771,14 @@ ${reportHtml}
         sectorName: selectedSector.name,
         specificTicker: specificTicker.trim().toUpperCase(),
         aiProvider,
+        houseId: house.id,
         profile,
         report: json,
       }
       saveHistoryEntry(entry)
 
       setReportData(json)
-      setReportHtml(renderReportHtml(json, profile))
+      setReportHtml(renderReportHtml(json, profile, house))
     } catch (err) {
       const safeMessage = escapeHtml(err?.message || 'Unknown error')
       setReportData(null)
@@ -719,7 +796,7 @@ ${reportHtml}
       <div className="app">
         <header className="header">
           <div className="logo">
-            <span className="logo-main">Goldman Sachs</span>
+            <span className="logo-main">{house.fullName}</span>
             <span className="logo-sep">|</span>
             <span className="logo-sub">AI Equity Research</span>
           </div>
@@ -752,7 +829,7 @@ ${reportHtml}
             <span className="accent">Stock Screening</span>
           </h1>
           <p className="hero-sub">
-            Select a sector, configure your investment profile, and receive a Goldman Sachs-style equity research report with top 10 picks,
+            Select a sector, configure your investment profile, and receive an institutional-grade equity research report with top 10 picks,
             valuation analysis, and price targets generated in real time by AI.
           </p>
         </div>
@@ -818,6 +895,19 @@ ${reportHtml}
             <div className="api-settings-help">
               Auto uses server default from env. OpenAI/Other uses your OPENAI_* settings and can point to OpenAI-compatible endpoints.
             </div>
+            <div className="config-label" style={{ marginTop: 14 }}>Research House</div>
+            <div className="config-options" style={{ flexWrap: 'wrap' }}>
+              {HOUSES.map((h) => (
+                <button
+                  key={h.id}
+                  type="button"
+                  className={`config-btn ${house.id === h.id ? 'active' : ''}`}
+                  onClick={() => setHouse(h)}
+                >
+                  {h.shortLabel}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
 
@@ -871,7 +961,7 @@ ${reportHtml}
             </div>
             <div className="history-grid">
               {reportHistory.slice(0, 8).map((entry) => (
-                <button key={entry.id} type="button" className="history-card" onClick={() => loadHistoryEntry(entry)}>
+                <div key={entry.id} role="button" tabIndex={0} className="history-card" onClick={() => loadHistoryEntry(entry)} onKeyDown={(e) => e.key === 'Enter' && loadHistoryEntry(entry)}>
                   <div className="history-card-header">
                     <div className="history-card-title">{entry.specificTicker || entry.sectorName}</div>
                     <button type="button" className="history-card-del" onClick={(e) => deleteHistoryEntry(e, entry.id)} title="Remove">✕</button>
@@ -879,7 +969,7 @@ ${reportHtml}
                   <div className="history-card-sub">{entry.specificTicker ? `${entry.sectorName} sector` : `${entry.profile?.risk || ''} • ${entry.profile?.strategy || ''}`}</div>
                   <div className="history-card-provider">API: {entry.aiProvider || 'auto'}</div>
                   <div className="history-card-time">{new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {formatAge(historyNowTs - entry.createdAt)}</div>
-                </button>
+                </div>
               ))}
             </div>
           </div>
@@ -889,7 +979,7 @@ ${reportHtml}
           {isGenerating && (
             <div className="loading-overlay">
               <div className="loading-title">Analyzing {selectedSector?.name} Sector...</div>
-              <div className="loading-sub">Running Goldman Sachs screening framework • Senior Analyst Mode</div>
+              <div className="loading-sub">Running {house.fullName} screening framework • Senior Analyst Mode</div>
               <div className="loading-bar-wrap">
                 <div className="loading-bar"></div>
               </div>

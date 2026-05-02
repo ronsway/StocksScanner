@@ -49,7 +49,7 @@ StocksScanner is a single-page React application that generates **institutional-
 
 ## 2. Repository Structure
 
-```
+```text
 StocksScanner/
 ├── src/
 │   ├── App.jsx          # Entire frontend: constants, data, logic, JSX
@@ -83,7 +83,7 @@ StocksScanner/
 
 ## 3. Architecture
 
-```
+```text
 Browser (React SPA)
 │
 │  /api/* proxied by Vite dev server
@@ -132,7 +132,7 @@ cp .env.example .env
 **All environment variables:**
 
 | Variable | Required | Default | Description |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `AI_PROVIDER` | No | `anthropic` | Default provider when client sends `aiProvider=auto`. Accepts `anthropic` or `openai`. |
 | `ANTHROPIC_API_KEY` | If using Claude | — | Your Anthropic API key |
 | `ANTHROPIC_MODEL` | No | `claude-sonnet-4-20250514` | Anthropic model ID. Server tries this first, then falls back through a hardcoded chain of claude models. |
@@ -179,7 +179,7 @@ The Express server serves the built React app from `/dist` and handles all `/api
 ## 6. npm Scripts Reference
 
 | Script | Command | Purpose |
-|---|---|---|
+| --- | --- | --- |
 | `npm run dev` | `concurrently "npm:dev:server" "npm:dev:client"` | Start frontend + backend together |
 | `npm run dev:client` | `vite` | Start only the Vite frontend |
 | `npm run dev:server` | `node server/index.js` | Start only the API server |
@@ -246,7 +246,7 @@ MAX_HISTORY_ITEMS   = 20
 ### Available Sectors
 
 | ID | Name | Sample Tickers |
-|---|---|---|
+| --- | --- | --- |
 | `technology` | Technology | NVDA, MSFT, META, GOOGL, PLTR |
 | `energy` | Energy | XOM, CVX, COP, LNG, NEE |
 | `healthcare` | Healthcare | LLY, UNH, ISRG, ABBV, JNJ |
@@ -263,7 +263,7 @@ MAX_HISTORY_ITEMS   = 20
 ### State
 
 | State | Type | Persisted | Purpose |
-|---|---|---|---|
+| --- | --- | --- | --- |
 | `selectedSector` | object \| null | No | Currently selected sector object |
 | `specificTicker` | string | No | Optional single-ticker mode input |
 | `aiProvider` | string | localStorage | Selected AI provider (`auto`/`anthropic`/`openai`) |
@@ -360,7 +360,7 @@ All colors are CSS custom properties on `:root`. No hardcoded colors outside of 
 Themes are applied by setting `data-theme` on `<html>`. The default theme has no `data-theme` attribute.
 
 | Theme ID | `data-theme` value | Character |
-|---|---|---|
+| --- | --- | --- |
 | `default` | *(none)* | Goldman Sachs dark gold |
 | `bloomberg` | `bloomberg` | Black terminal, amber, monospace font |
 | `paper` | `paper` | Warm white, ink-brown, newspaper feel |
@@ -404,7 +404,7 @@ isProduction    = process.env.NODE_ENV === 'production'
 
 ### System Prompt
 
-```
+```text
 You are a senior equity analyst at Goldman Sachs with 20 years of experience.
 You produce detailed, professional equity research screening reports in strict JSON format.
 You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks.
@@ -427,7 +427,7 @@ This is sent as the `system` field (Anthropic) or `{ role: 'system' }` message (
 
 ### Provider Selection Logic
 
-```
+```text
 aiProvider from client → normalizeProviderName()
                            ↓
 if 'openai'  → requestOpenAiCompatible()
@@ -492,9 +492,9 @@ Generates an AI equity research report, enriched with live market data.
 
 **Response (success):**
 
-```json
+```jsonc
 {
-  "report": { /* enriched report object — see AI JSON Schema below */ },
+  "report": { /* enriched report object — see AI JSON Schema section */ },
   "raw": "raw model text",
   "content": [{ "type": "text", "text": "..." }],
   "providerUsed": "anthropic",
@@ -515,7 +515,7 @@ Generates an AI equity research report, enriched with live market data.
 **Status codes:**
 
 | Code | Meaning |
-|---|---|
+| --- | --- |
 | 200 | Success |
 | 400 | Missing prompt or invalid `aiProvider` |
 | 500 | Server misconfiguration (missing API key) or unexpected error |
@@ -529,7 +529,7 @@ Generates an AI equity research report, enriched with live market data.
 
 `buildPrompt(sector, profile, specificTicker)` in `App.jsx` generates:
 
-```
+```text
 You are a senior Goldman Sachs equity analyst. Generate a comprehensive
 [single-stock report centered on {TICKER} within | stock screening report for]
 the {SECTOR} sector.
@@ -554,30 +554,31 @@ Requirements:
 
 The AI must return exactly this structure. All fields are required:
 
-```json
+```jsonc
 {
   "sectorName": "string",
   "sectorTheme": "string — one-sentence 2026 investment thesis",
   "macro": [
+    // 5 items required
     {
       "label": "string",
       "value": "string",
       "change": "string",
       "direction": "up | down | neutral"
     }
-    // × 5 items
   ],
   "stocks": [
+    // 10 items required (1 in single-ticker mode)
     {
       "ticker": "string",
       "company": "string",
       "subsector": "string",
       "rating": "STRONG BUY | BUY | HOLD",
-      "pe": "string — e.g. '~32 x fwd'",
+      "pe": "string",                  // e.g. "~32 x fwd"
       "sectorAvgPe": "string",
-      "revGrowth": "string — e.g. '+22%'",
-      "revGrowthPositive": "boolean",
-      "revBars": [0-100, 0-100, 0-100, 0-100, 0-100],
+      "revGrowth": "string",            // e.g. "+22%"
+      "revGrowthPositive": true,        // boolean
+      "revBars": [65, 72, 80, 88, 95], // 5 values, each 0–100 (2021–2025 revenue trend)
       "de": "string",
       "deNote": "string",
       "divYield": "string",
@@ -586,23 +587,22 @@ The AI must return exactly this structure. All fields are required:
       "bullTarget": "$XXX",
       "bearTarget": "$XXX",
       "currentPrice": "$XXX",
-      "bullPct": 0-100,
-      "bearPct": 0-100,
-      "currentPct": 0-100,
+      "bullPct": 75,                    // 0–100
+      "bearPct": 20,                    // 0–100; must satisfy bearPct < currentPct < bullPct
+      "currentPct": 50,                 // 0–100
       "bullCase": "string",
       "bearCase": "string",
       "entryLow": "$XXX",
       "entryHigh": "$XXX",
       "stopLoss": "$XXX",
-      "risk": 1-10,
+      "risk": 6,                        // integer 1–10
       "riskNote": "string",
-      "buyPct": 0-100,
-      "holdPct": 0-100,
-      "sellPct": 0-100,
+      "buyPct": 65,                     // 0–100; buyPct + holdPct + sellPct must equal 100
+      "holdPct": 25,                    // 0–100
+      "sellPct": 10,                    // 0–100
       "analystNote": "string",
       "catalysts": ["string", "string", "string", "string"]
     }
-    // × 10 (or × 1 in single-ticker mode)
   ],
   "disclaimer": "string"
 }
@@ -625,13 +625,13 @@ Fetches real-time quotes for an array of ticker symbols.
 
 **Primary endpoint:**
 
-```
+```text
 https://query1.finance.yahoo.com/v7/finance/quote?symbols={comma-separated}
 ```
 
 **Fallback (per-symbol, for any missing from the primary):**
 
-```
+```text
 https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d
 ```
 
@@ -696,7 +696,7 @@ Two requests with the same sector, profile, ticker, and provider produce the sam
 
 ### History Entry Shape
 
-```json
+```jsonc
 {
   "id": "1746200000000-abc123",
   "requestKey": "...",
@@ -706,7 +706,7 @@ Two requests with the same sector, profile, ticker, and provider produce the sam
   "specificTicker": "",
   "aiProvider": "anthropic",
   "profile": { "risk": "Moderate", "horizon": "2 years", "strategy": "Growth", "cap": "Large Cap" },
-  "report": { /* full enriched report JSON */ }
+  "report": { /* full enriched report object from /api/research-report */ }
 }
 ```
 
@@ -718,7 +718,7 @@ Triggered by the **Export PDF** button in the report actions bar.
 
 ### Approach: Hidden Iframe
 
-```
+```text
 exportReportPdf()
   │
   ├── Collect all CSS rules from document.styleSheets (catches Vite-injected styles)
@@ -833,7 +833,7 @@ server {
 ## 19. Known Limitations
 
 | Limitation | Detail |
-|---|---|
+| --- | --- |
 | No authentication | The API server has no auth. Do not expose port 8787 directly to the internet in production — always put it behind a reverse proxy. |
 | Yahoo Finance rate limits | No official API key required, but heavy use may result in temporary IP blocks. The app has no retry logic for Yahoo Finance failures — stocks with failed lookups simply keep their AI-generated prices. |
 | AI JSON reliability | Occasionally the model returns malformed JSON. The server attempts a regex-based JSON extraction as a fallback. If that also fails, the frontend shows an error message. |
@@ -846,7 +846,7 @@ server {
 ## 20. Changelog (key milestones)
 
 | Date | Change |
-|---|---|
+| --- | --- |
 | Initial | Migrated original single-file HTML app into React + Vite + Express architecture |
 | Early 2026 | AI provider selection added (Anthropic / OpenAI-compatible / Auto) |
 | Early 2026 | Live Yahoo Finance price enrichment added |

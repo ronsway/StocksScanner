@@ -14,8 +14,10 @@ const openAiApiKey = process.env.OPENAI_API_KEY
 const openAiModel = process.env.OPENAI_MODEL || 'gpt-4.1-mini'
 const openAiBaseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
 const isProduction = process.env.NODE_ENV === 'production'
-const systemPrompt =
-  'You are a senior equity analyst at Goldman Sachs with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.'
+function buildSystemPrompt(houseName) {
+  const name = typeof houseName === 'string' && houseName.trim() ? houseName.trim() : 'Goldman Sachs'
+  return `You are a senior equity analyst at ${name} with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.`
+}
 
 function parseMoney(value) {
   if (typeof value === 'number' && Number.isFinite(value)) return value
@@ -254,7 +256,7 @@ function normalizeProviderName(value) {
   return null
 }
 
-async function requestAnthropic(prompt) {
+async function requestAnthropic(prompt, houseName) {
   if (!anthropicApiKey) {
     return {
       ok: false,
@@ -288,7 +290,7 @@ async function requestAnthropic(prompt) {
       body: JSON.stringify({
         model,
         max_tokens: 4096,
-        system: systemPrompt,
+        system: buildSystemPrompt(houseName),
         messages: [{ role: 'user', content: prompt }],
       }),
     })
@@ -324,7 +326,7 @@ async function requestAnthropic(prompt) {
   }
 }
 
-async function requestOpenAiCompatible(prompt) {
+async function requestOpenAiCompatible(prompt, houseName) {
   if (!openAiApiKey) {
     return {
       ok: false,
@@ -345,7 +347,7 @@ async function requestOpenAiCompatible(prompt) {
       model: openAiModel,
       temperature: 0.2,
       messages: [
-        { role: 'system', content: systemPrompt },
+        { role: 'system', content: buildSystemPrompt(houseName) },
         { role: 'user', content: prompt },
       ],
     }),
@@ -396,6 +398,7 @@ app.post('/api/research-report', async (req, res) => {
     const incomingPrompt = req.body?.prompt
     const incomingSector = req.body?.sector
     const incomingProfile = req.body?.profile
+    const incomingHouse = typeof req.body?.house === 'string' ? req.body.house.trim() : ''
 
     let prompt = typeof incomingPrompt === 'string' ? incomingPrompt.trim() : ''
 
@@ -427,23 +430,23 @@ app.post('/api/research-report', async (req, res) => {
     let upstream
 
     if (providerForRequest === 'openai') {
-      upstream = await requestOpenAiCompatible(prompt)
+      upstream = await requestOpenAiCompatible(prompt, incomingHouse)
     } else if (providerForRequest === 'anthropic') {
-      upstream = await requestAnthropic(prompt)
+      upstream = await requestAnthropic(prompt, incomingHouse)
       const canFallbackToOpenAi =
         !upstream.ok &&
         Boolean(openAiApiKey) &&
         isLikelyCreditError(upstream.error)
 
       if (canFallbackToOpenAi) {
-        upstream = await requestOpenAiCompatible(prompt)
+        upstream = await requestOpenAiCompatible(prompt, incomingHouse)
       }
     } else {
-      upstream = await requestAnthropic(prompt)
+      upstream = await requestAnthropic(prompt, incomingHouse)
       const canFallbackToOpenAi = !upstream.ok && Boolean(openAiApiKey)
 
       if (canFallbackToOpenAi) {
-        upstream = await requestOpenAiCompatible(prompt)
+        upstream = await requestOpenAiCompatible(prompt, incomingHouse)
       }
     }
 
