@@ -49,14 +49,15 @@ function reconcileTargetsWithLivePrice(stock, livePrice) {
 
   // If model targets are coherent around model current price but stale versus live,
   // rescale the same upside/downside ratios around live price.
-  if (
+  const modelIsCoherent =
     Number.isFinite(modelCurrent) &&
     modelCurrent > 0 &&
     Number.isFinite(modelBull) &&
     Number.isFinite(modelBear) &&
     modelBull > modelCurrent &&
     modelBear < modelCurrent
-  ) {
+
+  if (modelIsCoherent) {
     nextBull = livePrice * (modelBull / modelCurrent)
     nextBear = livePrice * (modelBear / modelCurrent)
   }
@@ -68,6 +69,17 @@ function reconcileTargetsWithLivePrice(stock, livePrice) {
     nextBear = livePrice * (1 - fallback.down)
   }
 
+  // Rescale entry zone and stop loss by the same ratio as the price moved.
+  let nextEntryLow = parseMoney(stock.entryLow)
+  let nextEntryHigh = parseMoney(stock.entryHigh)
+  let nextStopLoss = parseMoney(stock.stopLoss)
+  if (modelIsCoherent) {
+    const scale = livePrice / modelCurrent
+    if (Number.isFinite(nextEntryLow) && nextEntryLow > 0) nextEntryLow = nextEntryLow * scale
+    if (Number.isFinite(nextEntryHigh) && nextEntryHigh > 0) nextEntryHigh = nextEntryHigh * scale
+    if (Number.isFinite(nextStopLoss) && nextStopLoss > 0) nextStopLoss = nextStopLoss * scale
+  }
+
   return {
     ...stock,
     currentPrice: formatUsd(livePrice),
@@ -76,6 +88,9 @@ function reconcileTargetsWithLivePrice(stock, livePrice) {
     bullPct: 85,
     currentPct: 45,
     bearPct: 10,
+    ...(Number.isFinite(nextEntryLow) && nextEntryLow > 0 ? { entryLow: formatUsd(nextEntryLow) } : {}),
+    ...(Number.isFinite(nextEntryHigh) && nextEntryHigh > 0 ? { entryHigh: formatUsd(nextEntryHigh) } : {}),
+    ...(Number.isFinite(nextStopLoss) && nextStopLoss > 0 ? { stopLoss: formatUsd(nextStopLoss) } : {}),
   }
 }
 

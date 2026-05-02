@@ -33,7 +33,7 @@ if errorlevel 1 goto :error
 
 if "%PORT%"=="" set PORT=8787
 echo [deploy] Starting production server on port %PORT% in background...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:NODE_ENV='production'; $env:PORT='%PORT%'; $p = Start-Process -FilePath 'node.exe' -ArgumentList 'server/index.js' -WorkingDirectory '%CD%' -RedirectStandardOutput 'logs\\deploy.log' -RedirectStandardError 'logs\\deploy.log' -PassThru; $p.Id | Out-File '.run\\deploy.pid' -Encoding ascii"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$env:NODE_ENV='production'; $env:PORT='%PORT%'; $p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','node server/index.js >> logs\\deploy.log 2>&1' -WorkingDirectory '%CD%' -PassThru; $p.Id | Out-File '.run\\deploy.pid' -Encoding ascii"
 if errorlevel 1 goto :error
 
 for /f %%p in (.run\deploy.pid) do set NEW_PID=%%p

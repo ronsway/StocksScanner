@@ -470,6 +470,11 @@ function App() {
     setCacheNotice('History cleared.')
   }
 
+  const deleteHistoryEntry = (e, id) => {
+    e.stopPropagation()
+    persistHistory(reportHistory.filter((item) => item.id !== id))
+  }
+
   const buildShareText = () => {
     if (!reportData || typeof reportData !== 'object') return ''
 
@@ -501,7 +506,83 @@ function App() {
   }
 
   const exportReportPdf = () => {
-    window.print()
+    if (!reportHtml) return
+    const printWin = window.open('', '_blank', 'noopener,noreferrer')
+    if (!printWin) {
+      window.print()
+      return
+    }
+    const styles = Array.from(document.styleSheets)
+      .map((sheet) => {
+        try {
+          return Array.from(sheet.cssRules).map((rule) => rule.cssText).join('\n')
+        } catch {
+          return sheet.href ? `@import url("${sheet.href}");` : ''
+        }
+      })
+      .join('\n')
+    printWin.document.write(`<!DOCTYPE html>
+<html>
+<head>
+<meta charset="utf-8">
+<title>Stock Research Report</title>
+<style>
+${styles}
+:root {
+  --ink: #fff;
+  --ink2: #f5f5f5;
+  --gold: #9a6a10;
+  --gold2: #7a5008;
+  --gold3: #5a3800;
+  --silver: #555;
+  --cream: #111;
+  --border: rgba(0,0,0,0.15);
+  --border2: rgba(0,0,0,0.1);
+  --text: #111;
+  --text2: #555;
+  --green: #1a7a40;
+  --red: #b03040;
+  --blue: #2060a0;
+  --purple: #6040a0;
+  --orange: #a04010;
+  --teal: #107060;
+  --r: 4px;
+}
+body { background: #fff; color: #111; font-family: 'Instrument Sans', sans-serif; margin: 0; padding: 16px; }
+body::after, .bg-glow, .header, .hero, .sector-section, .config-section,
+.api-settings-section, .generate-section, .history-section, .report-actions,
+.loading-overlay, .cache-notice { display: none !important; }
+.report-section { display: block !important; padding: 0 !important; max-width: none; margin: 0; }
+.report-output, .rpt-header, .macro-strip, .summary-wrap, .scard, .rpt-disclaimer {
+  background: #fff !important; color: #111 !important; border-color: #ddd !important; box-shadow: none !important;
+}
+.summary-wrap, .table-scroll, .macro-strip { overflow: visible !important; }
+.stock-table { font-size: 9px !important; width: 100% !important; }
+.stock-table thead th, .stock-table td { padding: 5px 5px !important; font-size: 8px !important; white-space: normal !important; }
+.scard { page-break-inside: avoid !important; break-inside: avoid !important; }
+.rpt-header { page-break-inside: avoid !important; break-inside: avoid !important; }
+.cards-grid { grid-template-columns: 1fr 1fr !important; }
+.market-snap-wrap { background: #fff !important; border-color: #ddd !important; }
+.td-ticker, .scard-ticker { color: #7a5008 !important; }
+.td-up, .pos { color: #1a7a40 !important; }
+.td-down, .neg { color: #b03040 !important; }
+.neu { color: #7a5008 !important; }
+.badge-sb { background: rgba(26,122,64,0.1) !important; color: #1a7a40 !important; }
+.badge-b { background: rgba(32,96,160,0.1) !important; color: #2060a0 !important; }
+.badge-h { background: rgba(122,80,8,0.1) !important; color: #7a5008 !important; }
+</style>
+</head>
+<body>
+<div class="report-section visible">
+${reportHtml}
+</div>
+</body>
+</html>`)
+    printWin.document.close()
+    printWin.onload = () => {
+      printWin.focus()
+      printWin.print()
+    }
   }
 
   const generateReport = async () => {
@@ -735,7 +816,10 @@ function App() {
             <div className="history-grid">
               {reportHistory.slice(0, 8).map((entry) => (
                 <button key={entry.id} type="button" className="history-card" onClick={() => loadHistoryEntry(entry)}>
-                  <div className="history-card-title">{entry.specificTicker || entry.sectorName}</div>
+                  <div className="history-card-header">
+                    <div className="history-card-title">{entry.specificTicker || entry.sectorName}</div>
+                    <button type="button" className="history-card-del" onClick={(e) => deleteHistoryEntry(e, entry.id)} title="Remove">✕</button>
+                  </div>
                   <div className="history-card-sub">{entry.specificTicker ? `${entry.sectorName} sector` : `${entry.profile?.risk || ''} • ${entry.profile?.strategy || ''}`}</div>
                   <div className="history-card-provider">API: {entry.aiProvider || 'auto'}</div>
                   <div className="history-card-time">{new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {formatAge(historyNowTs - entry.createdAt)}</div>

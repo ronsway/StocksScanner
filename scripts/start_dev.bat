@@ -26,7 +26,7 @@ if exist .run\dev.pid (
 )
 
 echo [dev] Starting frontend + backend in background...
-powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','npm run dev' -WorkingDirectory '%CD%' -RedirectStandardOutput 'logs\\dev.log' -RedirectStandardError 'logs\\dev.log' -PassThru; $p.Id | Out-File '.run\\dev.pid' -Encoding ascii"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$p = Start-Process -FilePath 'cmd.exe' -ArgumentList '/c','npm run dev >> logs\\dev.log 2>&1' -WorkingDirectory '%CD%' -PassThru; $p.Id | Out-File '.run\\dev.pid' -Encoding ascii"
 if errorlevel 1 goto :error
 
 for /f %%p in (.run\dev.pid) do set NEW_PID=%%p

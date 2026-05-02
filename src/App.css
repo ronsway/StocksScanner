@@ -88,6 +88,7 @@ body::after {
   justify-content: space-between;
   align-items: center;
   background: rgba(10, 12, 18, 0.8);
+  -webkit-backdrop-filter: blur(20px);
   backdrop-filter: blur(20px);
   position: sticky;
   top: 0;
@@ -555,11 +556,35 @@ body::after {
   transform: translateY(-1px);
 }
 
+.history-card-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 4px;
+}
+
 .history-card-title {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12px;
   color: var(--cream);
-  margin-bottom: 4px;
+}
+
+.history-card-del {
+  background: transparent;
+  border: none;
+  color: var(--silver);
+  font-size: 9px;
+  line-height: 1;
+  padding: 0 2px;
+  cursor: pointer;
+  opacity: 0.5;
+  transition: opacity 0.15s, color 0.15s;
+  flex-shrink: 0;
+}
+
+.history-card-del:hover {
+  opacity: 1;
+  color: var(--red, #e05060);
 }
 
 .history-card-sub {
@@ -1483,9 +1508,16 @@ body::after {
 }
 
 @media print {
+  @page {
+    margin: 15mm;
+    size: A4 landscape;
+  }
+
   body {
     background: #fff !important;
     color: #000 !important;
+    -webkit-print-color-adjust: exact;
+    print-color-adjust: exact;
   }
 
   body::after,
@@ -1494,8 +1526,12 @@ body::after {
   .hero,
   .sector-section,
   .config-section,
+  .api-settings-section,
   .generate-section,
-  .report-actions {
+  .history-section,
+  .report-actions,
+  .loading-overlay,
+  .cache-notice {
     display: none !important;
   }
 
@@ -1521,5 +1557,55 @@ body::after {
     color: #111 !important;
     border-color: #d0d0d0 !important;
     box-shadow: none !important;
+  }
+
+  /* Fix overflow clipping — critical for full table and macro strip to print */
+  .summary-wrap {
+    overflow: visible !important;
+  }
+
+  .table-scroll {
+    overflow: visible !important;
+  }
+
+  .macro-strip {
+    overflow: visible !important;
+  }
+
+  /* Scale down table font for landscape fit */
+  .stock-table {
+    font-size: 9px !important;
+    width: 100% !important;
+    table-layout: auto !important;
+  }
+
+  .stock-table thead th,
+  .stock-table td {
+    padding: 6px 6px !important;
+    font-size: 8px !important;
+    white-space: normal !important;
+  }
+
+  /* Prevent stock cards from splitting across pages */
+  .scard {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  .rpt-header {
+    page-break-inside: avoid !important;
+    break-inside: avoid !important;
+  }
+
+  /* Reasonable 2-column card grid in landscape */
+  .cards-grid {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px !important;
+  }
+
+  /* Keep market snapshot visible */
+  .market-snap-wrap {
+    background: #fff !important;
+    border-color: #d0d0d0 !important;
   }
 }
