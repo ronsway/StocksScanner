@@ -41,6 +41,11 @@ OPENAI_BASE_URL=https://api.openai.com/v1
 
 You can also point OPENAI_BASE_URL at OpenRouter, Groq, Together, or any OpenAI-compatible endpoint.
 
+In the app UI, use **API Settings** to switch per request between:
+- Auto (server default from `AI_PROVIDER`)
+- Claude (Anthropic)
+- OpenAI / Other Compatible
+
 ## Run
 
 Start both frontend and backend together:
@@ -93,6 +98,7 @@ What they do:
 ## API Endpoint
 
 - `POST /api/research-report`
-- Request body expects `{ prompt, sector, profile }`
+- Request body expects `{ prompt, sector, profile, aiProvider }`
+- `aiProvider` accepts `auto`, `anthropic`/`claude`, or `openai`/`other`
 - Response includes parsed `report` when valid JSON is returned by the model, plus raw model text.
 - Response also includes `providerUsed` and `modelUsed` for debugging.

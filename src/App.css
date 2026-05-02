@@ -329,6 +329,28 @@ body::after {
   animation: fadeUp 0.7s ease 0.3s both;
 }
 
+.api-settings-section {
+  padding: 0 48px 30px;
+  animation: fadeUp 0.7s ease 0.32s both;
+}
+
+.api-settings-card {
+  max-width: 1100px;
+  margin: 0 auto;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border2);
+  border-radius: var(--r);
+  padding: 16px;
+}
+
+.api-settings-help {
+  margin-top: 10px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.7px;
+  color: var(--silver);
+}
+
 .config-grid {
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
@@ -551,6 +573,14 @@ body::after {
   font-size: 8px;
   color: var(--silver);
   opacity: 0.85;
+}
+
+.history-card-provider {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 8px;
+  letter-spacing: 0.7px;
+  color: var(--gold2);
+  margin-bottom: 5px;
 }
 
 .history-clear-btn {

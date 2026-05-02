@@ -7,7 +7,7 @@ dotenv.config()
 
 const app = express()
 const port = Number(process.env.PORT || 8787)
-const aiProvider = String(process.env.AI_PROVIDER || 'anthropic').toLowerCase()
+const defaultAiProvider = String(process.env.AI_PROVIDER || 'anthropic').toLowerCase()
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY
 const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
 const openAiApiKey = process.env.OPENAI_API_KEY
@@ -16,6 +16,68 @@ const openAiBaseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1
 const isProduction = process.env.NODE_ENV === 'production'
 const systemPrompt =
   'You are a senior equity analyst at Goldman Sachs with 20 years of experience. You produce detailed, professional equity research screening reports in strict JSON format. You respond ONLY with a valid JSON object - no preamble, no markdown, no backticks. The JSON must be complete and parseable.'
+
+function parseMoney(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value
+  if (typeof value !== 'string') return null
+  const cleaned = value.replace(/[^0-9.-]/g, '')
+  const parsed = Number(cleaned)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function formatUsd(value) {
+  if (!Number.isFinite(value)) return null
+  return `$${value.toFixed(2)}`
+}
+
+function getFallbackTargetPercents(rating) {
+  const normalized = String(rating || '').trim().toUpperCase()
+  if (normalized === 'STRONG BUY') return { up: 0.3, down: 0.15 }
+  if (normalized === 'BUY') return { up: 0.2, down: 0.12 }
+  return { up: 0.12, down: 0.1 }
+}
+
+function reconcileTargetsWithLivePrice(stock, livePrice) {
+  if (!stock || typeof stock !== 'object' || !Number.isFinite(livePrice) || livePrice <= 0) return stock
+
+  const modelCurrent = parseMoney(stock.currentPrice)
+  const modelBull = parseMoney(stock.bullTarget)
+  const modelBear = parseMoney(stock.bearTarget)
+
+  let nextBull = modelBull
+  let nextBear = modelBear
+
+  // If model targets are coherent around model current price but stale versus live,
+  // rescale the same upside/downside ratios around live price.
+  if (
+    Number.isFinite(modelCurrent) &&
+    modelCurrent > 0 &&
+    Number.isFinite(modelBull) &&
+    Number.isFinite(modelBear) &&
+    modelBull > modelCurrent &&
+    modelBear < modelCurrent
+  ) {
+    nextBull = livePrice * (modelBull / modelCurrent)
+    nextBear = livePrice * (modelBear / modelCurrent)
+  }
+
+  // If still not coherent, generate conservative fallback targets from rating.
+  if (!(Number.isFinite(nextBull) && Number.isFinite(nextBear) && nextBull > livePrice && nextBear < livePrice)) {
+    const fallback = getFallbackTargetPercents(stock.rating)
+    nextBull = livePrice * (1 + fallback.up)
+    nextBear = livePrice * (1 - fallback.down)
+  }
+
+  return {
+    ...stock,
+    currentPrice: formatUsd(livePrice),
+    bullTarget: formatUsd(nextBull),
+    bearTarget: formatUsd(nextBear),
+    bullPct: 85,
+    currentPct: 45,
+    bearPct: 10,
+  }
+}
 
 function normalizeTickerForYahoo(ticker) {
   return String(ticker || '').trim().toUpperCase().replace(/\./g, '-')
@@ -115,10 +177,10 @@ async function enrichReportWithLiveMarketData(report) {
     const live = stockQuotes[ticker]
     if (!live) return stock
 
-    const next = { ...stock }
+    let next = { ...stock }
     if (typeof live.price === 'number') {
       next.livePrice = live.price.toFixed(2)
-      next.currentPrice = `$${live.price.toFixed(2)}`
+      next = reconcileTargetsWithLivePrice(next, live.price)
     }
     if (typeof live.changePct === 'number') {
       next.liveChangePct = live.changePct.toFixed(2)
@@ -165,6 +227,16 @@ function isLikelyCreditError(errorMessage) {
   if (typeof errorMessage !== 'string') return false
   const msg = errorMessage.toLowerCase()
   return msg.includes('credit') || msg.includes('billing') || msg.includes('insufficient') || msg.includes('quota')
+}
+
+function normalizeProviderName(value) {
+  const normalized = String(value || '').trim().toLowerCase()
+  if (!normalized) return null
+  if (normalized === 'auto') return 'auto'
+  if (normalized === 'anthropic' || normalized === 'claude') return 'anthropic'
+  if (normalized === 'openai' || normalized === 'chatgpt') return 'openai'
+  if (normalized === 'other' || normalized === 'custom' || normalized === 'openai-compatible') return 'openai'
+  return null
 }
 
 async function requestAnthropic(prompt) {
@@ -296,7 +368,12 @@ const distPath = path.resolve(__dirname, '..', 'dist')
 app.use(express.json({ limit: '1mb' }))
 
 app.get('/api/health', (_req, res) => {
-  res.json({ ok: true })
+  const normalizedDefault = normalizeProviderName(defaultAiProvider) || 'anthropic'
+  res.json({
+    ok: true,
+    defaultProvider: normalizedDefault,
+    providers: ['auto', 'anthropic', 'openai'],
+  })
 })
 
 app.post('/api/research-report', async (req, res) => {
@@ -322,15 +399,33 @@ app.post('/api/research-report', async (req, res) => {
       })
     }
 
+    const requestedProvider = normalizeProviderName(req.body?.aiProvider)
+    if (req.body?.aiProvider && !requestedProvider) {
+      return res.status(400).json({
+        error: 'Invalid aiProvider. Use auto, anthropic/claude, or openai/other.',
+      })
+    }
+
+    const fallbackDefaultProvider = normalizeProviderName(defaultAiProvider) || 'anthropic'
+    const providerForRequest = requestedProvider || fallbackDefaultProvider
+
     let upstream
-    if (aiProvider === 'openai') {
+
+    if (providerForRequest === 'openai') {
       upstream = await requestOpenAiCompatible(prompt)
-    } else {
+    } else if (providerForRequest === 'anthropic') {
       upstream = await requestAnthropic(prompt)
       const canFallbackToOpenAi =
         !upstream.ok &&
         Boolean(openAiApiKey) &&
         isLikelyCreditError(upstream.error)
+
+      if (canFallbackToOpenAi) {
+        upstream = await requestOpenAiCompatible(prompt)
+      }
+    } else {
+      upstream = await requestAnthropic(prompt)
+      const canFallbackToOpenAi = !upstream.ok && Boolean(openAiApiKey)
 
       if (canFallbackToOpenAi) {
         upstream = await requestOpenAiCompatible(prompt)

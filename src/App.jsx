@@ -47,10 +47,16 @@ const CONFIG_SHORT_LABELS = {
 const LOADING_STEPS = ['Screening Universe', 'Valuation Analysis', 'Pipeline & Catalysts', 'Risk Assessment', 'Building Report']
 const REPORT_API_URL = '/api/research-report'
 const REPORT_HISTORY_STORAGE_KEY = 'stocks-scanner-report-history-v1'
+const API_PROVIDER_STORAGE_KEY = 'stocks-scanner-api-provider-v1'
 const REPORT_CACHE_TTL_MS = 5 * 60 * 1000
 const MAX_HISTORY_ITEMS = 20
+const API_PROVIDER_OPTIONS = [
+  { id: 'auto', label: 'Auto', shortLabel: 'Auto' },
+  { id: 'anthropic', label: 'Claude (Anthropic)', shortLabel: 'Claude' },
+  { id: 'openai', label: 'OpenAI / Other Compatible', shortLabel: 'OpenAI/Other' },
+]
 
-function buildRequestKey(sector, profile, specificTicker) {
+function buildRequestKey(sector, profile, specificTicker, aiProvider) {
   const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
   return JSON.stringify({
     sectorId: sector?.id || '',
@@ -60,6 +66,7 @@ function buildRequestKey(sector, profile, specificTicker) {
       strategy: profile?.strategy || '',
       cap: profile?.cap || '',
     },
+    aiProvider: aiProvider || 'auto',
     ticker: normalizedTicker,
   })
 }
@@ -364,6 +371,16 @@ function renderReportHtml(data, profile) {
 function App() {
   const [selectedSector, setSelectedSector] = useState(null)
   const [specificTicker, setSpecificTicker] = useState('')
+  const [aiProvider, setAiProvider] = useState(() => {
+    try {
+      const saved = localStorage.getItem(API_PROVIDER_STORAGE_KEY)
+      if (!saved) return 'auto'
+      if (API_PROVIDER_OPTIONS.some((option) => option.id === saved)) return saved
+      return 'auto'
+    } catch {
+      return 'auto'
+    }
+  })
   const [profile, setProfile] = useState(DEFAULT_PROFILE)
   const [isGenerating, setIsGenerating] = useState(false)
   const [showReport, setShowReport] = useState(false)
@@ -409,6 +426,14 @@ function App() {
     return () => clearInterval(timer)
   }, [reportHistory.length])
 
+  useEffect(() => {
+    try {
+      localStorage.setItem(API_PROVIDER_STORAGE_KEY, aiProvider)
+    } catch {
+      // Ignore localStorage quota or privacy mode errors.
+    }
+  }, [aiProvider])
+
   const updateProfile = (group, value) => {
     setProfile((prev) => ({ ...prev, [group]: value }))
   }
@@ -432,6 +457,7 @@ function App() {
     const sector = SECTORS.find((item) => item.id === entry.sectorId)
     if (sector) setSelectedSector(sector)
     setSpecificTicker(entry.specificTicker || '')
+    setAiProvider(entry.aiProvider || 'auto')
     setProfile(entry.profile || DEFAULT_PROFILE)
     setReportData(entry.report || null)
     setReportHtml(renderReportHtml(entry.report || {}, entry.profile || DEFAULT_PROFILE))
@@ -481,7 +507,7 @@ function App() {
   const generateReport = async () => {
     if (!selectedSector || isGenerating) return
 
-    const requestKey = buildRequestKey(selectedSector, profile, specificTicker)
+    const requestKey = buildRequestKey(selectedSector, profile, specificTicker, aiProvider)
     const recent = reportHistory.find((entry) => entry.requestKey === requestKey)
     if (recent && Date.now() - recent.createdAt <= REPORT_CACHE_TTL_MS) {
       loadHistoryEntry(recent)
@@ -504,6 +530,7 @@ function App() {
           prompt,
           sector: selectedSector.id,
           profile,
+          aiProvider,
           ticker: specificTicker.trim().toUpperCase(),
         }),
       })
@@ -542,6 +569,7 @@ function App() {
         sectorId: selectedSector.id,
         sectorName: selectedSector.name,
         specificTicker: specificTicker.trim().toUpperCase(),
+        aiProvider,
         profile,
         report: json,
       }
@@ -634,6 +662,28 @@ function App() {
           </div>
         </div>
 
+        <div className="api-settings-section">
+          <div className="section-label">API Settings</div>
+          <div className="api-settings-card">
+            <div className="config-label">Provider</div>
+            <div className="config-options">
+              {API_PROVIDER_OPTIONS.map((option) => (
+                <button
+                  key={option.id}
+                  type="button"
+                  className={`config-btn ${aiProvider === option.id ? 'active' : ''}`}
+                  onClick={() => setAiProvider(option.id)}
+                >
+                  {option.shortLabel}
+                </button>
+              ))}
+            </div>
+            <div className="api-settings-help">
+              Auto uses server default from env. OpenAI/Other uses your OPENAI_* settings and can point to OpenAI-compatible endpoints.
+            </div>
+          </div>
+        </div>
+
         <div className="generate-section">
           <div className="ticker-input-wrap">
             <label htmlFor="specific-ticker" className="ticker-input-label">Specific Ticker (Optional)</label>
@@ -687,6 +737,7 @@ function App() {
                 <button key={entry.id} type="button" className="history-card" onClick={() => loadHistoryEntry(entry)}>
                   <div className="history-card-title">{entry.specificTicker || entry.sectorName}</div>
                   <div className="history-card-sub">{entry.specificTicker ? `${entry.sectorName} sector` : `${entry.profile?.risk || ''} • ${entry.profile?.strategy || ''}`}</div>
+                  <div className="history-card-provider">API: {entry.aiProvider || 'auto'}</div>
                   <div className="history-card-time">{new Date(entry.createdAt).toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })} · {formatAge(historyNowTs - entry.createdAt)}</div>
                 </button>
               ))}
