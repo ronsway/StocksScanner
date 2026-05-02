@@ -19,6 +19,169 @@
   --r: 4px;
 }
 
+/* ── Bloomberg Terminal ───────────────────────────────────── */
+[data-theme="bloomberg"] {
+  --ink: #000;
+  --ink2: #080808;
+  --gold: #ff9900;
+  --gold2: #ffb300;
+  --gold3: #ffcc00;
+  --silver: #888;
+  --cream: #ffcc00;
+  --border: rgba(255, 153, 0, 0.35);
+  --border2: rgba(255, 153, 0, 0.12);
+  --text: #cc9900;
+  --text2: #777;
+  --green: #00cc44;
+  --red: #ff2244;
+  --blue: #ff9900;
+  --purple: #ffaa00;
+  --orange: #ff6600;
+  --teal: #ff9900;
+}
+[data-theme="bloomberg"] body { font-family: 'JetBrains Mono', 'Courier New', monospace; }
+[data-theme="bloomberg"] .header { background: rgba(0, 0, 0, 0.97); }
+[data-theme="bloomberg"] .bg-glow-1 { background: radial-gradient(circle, rgba(255, 153, 0, 0.05) 0%, transparent 70%); }
+[data-theme="bloomberg"] .bg-glow-2 { background: radial-gradient(circle, rgba(255, 153, 0, 0.03) 0%, transparent 70%); }
+[data-theme="bloomberg"] .hero-title,
+[data-theme="bloomberg"] .sector-name,
+[data-theme="bloomberg"] .rpt-title { color: #ff9900; }
+[data-theme="bloomberg"] .hero-title .accent { color: #ffcc00; }
+[data-theme="bloomberg"] .logo-main { color: #ff9900; }
+
+/* ── Paper / Light ────────────────────────────────────────── */
+[data-theme="paper"] {
+  --ink: #fafaf5;
+  --ink2: #f0ede4;
+  --gold: #7a4e0a;
+  --gold2: #5c3800;
+  --gold3: #3d2400;
+  --silver: #5a5a5a;
+  --cream: #1a1a1a;
+  --border: rgba(90, 60, 10, 0.22);
+  --border2: rgba(90, 60, 10, 0.09);
+  --text: #2a2a2a;
+  --text2: #666;
+  --green: #1a6b3a;
+  --red: #9b2020;
+  --blue: #1a4a8b;
+  --purple: #5a2e8b;
+  --orange: #8b3e10;
+  --teal: #0e6060;
+}
+[data-theme="paper"] body { background: #fafaf5; color: #2a2a2a; font-family: 'Instrument Sans', Georgia, serif; }
+[data-theme="paper"] .header { background: rgba(250, 250, 245, 0.92); border-bottom-color: rgba(90, 60, 10, 0.18); }
+[data-theme="paper"] .bg-glow-1 { background: radial-gradient(circle, rgba(90, 60, 10, 0.04) 0%, transparent 70%); }
+[data-theme="paper"] .bg-glow-2 { background: radial-gradient(circle, rgba(26, 74, 139, 0.03) 0%, transparent 70%); }
+[data-theme="paper"] .hero-title { color: #1a1a1a; }
+[data-theme="paper"] .hero-title .accent { color: #7a4e0a; }
+[data-theme="paper"] .sector-name { color: #1a1a1a; }
+[data-theme="paper"] .rpt-title { color: #1a1a1a; }
+[data-theme="paper"] .logo-main { color: #7a4e0a; }
+[data-theme="paper"] .sector-card { background: rgba(0, 0, 0, 0.02); }
+[data-theme="paper"] .scard { background: rgba(0, 0, 0, 0.02); }
+[data-theme="paper"] .live-badge { background: rgba(26, 107, 58, 0.08); border-color: rgba(26, 107, 58, 0.25); color: #1a6b3a; }
+[data-theme="paper"] .live-dot { background: #1a6b3a; }
+[data-theme="paper"] body::after { opacity: 0.15; }
+
+/* ── Cyber Neon ───────────────────────────────────────────── */
+[data-theme="cyber"] {
+  --ink: #03030a;
+  --ink2: #06060f;
+  --gold: #00ffe0;
+  --gold2: #00ccff;
+  --gold3: #ff00cc;
+  --silver: #3a6677;
+  --cream: #b0eeff;
+  --border: rgba(0, 255, 224, 0.22);
+  --border2: rgba(0, 255, 224, 0.07);
+  --text: #80c8dd;
+  --text2: #3a6677;
+  --green: #00ff88;
+  --red: #ff0055;
+  --blue: #00ccff;
+  --purple: #cc00ff;
+  --orange: #ff6600;
+  --teal: #00ffe0;
+}
+[data-theme="cyber"] .header { background: rgba(3, 3, 10, 0.9); }
+[data-theme="cyber"] .bg-glow-1 { background: radial-gradient(circle, rgba(0, 255, 224, 0.06) 0%, transparent 70%); }
+[data-theme="cyber"] .bg-glow-2 { background: radial-gradient(circle, rgba(255, 0, 204, 0.05) 0%, transparent 70%); }
+[data-theme="cyber"] .hero-title { color: #fff; }
+[data-theme="cyber"] .hero-title .accent { color: #00ffe0; font-style: normal; }
+[data-theme="cyber"] .sector-name { color: #b0eeff; }
+[data-theme="cyber"] .rpt-title { color: #00ffe0; }
+[data-theme="cyber"] .logo-main { color: #00ffe0; }
+[data-theme="cyber"] .generate-btn { background: #00ffe0; color: #03030a; }
+[data-theme="cyber"] .generate-btn:hover { background: #00ccff; box-shadow: 0 8px 32px rgba(0, 255, 224, 0.4); }
+[data-theme="cyber"] .scard:hover { box-shadow: 0 10px 40px rgba(0, 255, 224, 0.15); }
+
+/* ── Forest ESG ───────────────────────────────────────────── */
+[data-theme="forest"] {
+  --ink: #080f08;
+  --ink2: #0e170e;
+  --gold: #7ab648;
+  --gold2: #9cd460;
+  --gold3: #b8e880;
+  --silver: #5a7a5a;
+  --cream: #d0ead0;
+  --border: rgba(122, 182, 72, 0.22);
+  --border2: rgba(122, 182, 72, 0.08);
+  --text: #a8c8a8;
+  --text2: #5a7a5a;
+  --green: #50d870;
+  --red: #e06050;
+  --blue: #3090b0;
+  --purple: #7060c0;
+  --orange: #c07030;
+  --teal: #20b090;
+}
+[data-theme="forest"] .header { background: rgba(8, 15, 8, 0.88); }
+[data-theme="forest"] .bg-glow-1 { background: radial-gradient(circle, rgba(122, 182, 72, 0.07) 0%, transparent 70%); }
+[data-theme="forest"] .bg-glow-2 { background: radial-gradient(circle, rgba(32, 176, 144, 0.05) 0%, transparent 70%); }
+[data-theme="forest"] .hero-title { color: #e8f8e8; }
+[data-theme="forest"] .hero-title .accent { color: #9cd460; }
+[data-theme="forest"] .sector-name { color: #d0ead0; }
+[data-theme="forest"] .rpt-title { color: #d0ead0; }
+[data-theme="forest"] .logo-main { color: #9cd460; }
+[data-theme="forest"] .generate-btn { background: #7ab648; }
+[data-theme="forest"] .generate-btn:hover { background: #9cd460; box-shadow: 0 8px 32px rgba(122, 182, 72, 0.4); }
+
+/* ── High Contrast ────────────────────────────────────────── */
+[data-theme="hc"] {
+  --ink: #000;
+  --ink2: #111;
+  --gold: #ffff00;
+  --gold2: #fff;
+  --gold3: #ccc;
+  --silver: #aaa;
+  --cream: #fff;
+  --border: rgba(255, 255, 255, 0.5);
+  --border2: rgba(255, 255, 255, 0.2);
+  --text: #fff;
+  --text2: #aaa;
+  --green: #00ff00;
+  --red: #ff4444;
+  --blue: #4499ff;
+  --purple: #cc88ff;
+  --orange: #ff8800;
+  --teal: #00ffcc;
+}
+[data-theme="hc"] .header { background: rgba(0, 0, 0, 0.98); border-bottom-color: rgba(255, 255, 255, 0.3); }
+[data-theme="hc"] .bg-glow-1,
+[data-theme="hc"] .bg-glow-2 { display: none; }
+[data-theme="hc"] .hero-title,
+[data-theme="hc"] .sector-name,
+[data-theme="hc"] .rpt-title { color: #fff; }
+[data-theme="hc"] .hero-title .accent { color: #ffff00; }
+[data-theme="hc"] .logo-main { color: #fff; }
+[data-theme="hc"] .generate-btn { background: #ffff00; color: #000; }
+[data-theme="hc"] .generate-btn:hover { background: #fff; box-shadow: 0 8px 32px rgba(255, 255, 255, 0.3); }
+[data-theme="hc"] .sector-card { border-width: 2px; }
+[data-theme="hc"] .scard { border-width: 2px; }
+[data-theme="hc"] .live-badge { background: rgba(0, 255, 0, 0.1); border-color: #00ff00; color: #00ff00; }
+[data-theme="hc"] .live-dot { background: #00ff00; }
+
 *,
 *::before,
 *::after {
@@ -157,6 +320,37 @@ body::after {
   font-size: 9px;
   color: var(--silver);
   letter-spacing: 1px;
+}
+
+.theme-switcher {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 0 4px;
+}
+
+.theme-swatch {
+  width: 13px;
+  height: 13px;
+  border-radius: 50%;
+  background: var(--swatch);
+  border: 2px solid transparent;
+  cursor: pointer;
+  transition: transform 0.15s ease, border-color 0.15s ease, box-shadow 0.15s ease;
+  padding: 0;
+  outline: none;
+  flex-shrink: 0;
+}
+
+.theme-swatch:hover {
+  transform: scale(1.25);
+  box-shadow: 0 0 6px var(--swatch);
+}
+
+.theme-swatch.active {
+  border-color: #fff;
+  transform: scale(1.18);
+  box-shadow: 0 0 8px var(--swatch);
 }
 
 .hero {

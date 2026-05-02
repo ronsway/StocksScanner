@@ -56,6 +56,16 @@ const API_PROVIDER_OPTIONS = [
   { id: 'openai', label: 'OpenAI / Other Compatible', shortLabel: 'OpenAI/Other' },
 ]
 
+const THEME_STORAGE_KEY = 'stocks-scanner-theme-v1'
+const THEMES = [
+  { id: 'default',   label: 'Goldman Dark',        swatch: '#c9963a' },
+  { id: 'bloomberg', label: 'Bloomberg Terminal',   swatch: '#ff9900' },
+  { id: 'paper',     label: 'Paper / Light',        swatch: '#8b5e0a' },
+  { id: 'cyber',     label: 'Cyber Neon',           swatch: '#00ffe0' },
+  { id: 'forest',    label: 'Forest ESG',           swatch: '#7ab648' },
+  { id: 'hc',        label: 'High Contrast',        swatch: '#ffffff' },
+]
+
 function buildRequestKey(sector, profile, specificTicker, aiProvider) {
   const normalizedTicker = typeof specificTicker === 'string' ? specificTicker.trim().toUpperCase() : ''
   return JSON.stringify({
@@ -400,6 +410,15 @@ function App() {
   const [historyNowTs, setHistoryNowTs] = useState(() => Date.now())
   const [cacheNotice, setCacheNotice] = useState('')
   const reportSectionRef = useRef(null)
+  const [theme, setTheme] = useState(() => {
+    try {
+      const saved = localStorage.getItem(THEME_STORAGE_KEY)
+      if (saved && THEMES.some((t) => t.id === saved)) return saved
+      return 'default'
+    } catch {
+      return 'default'
+    }
+  })
 
   const headerDate = useMemo(() => {
     const now = new Date()
@@ -433,6 +452,19 @@ function App() {
       // Ignore localStorage quota or privacy mode errors.
     }
   }, [aiProvider])
+
+  useEffect(() => {
+    if (theme === 'default') {
+      document.documentElement.removeAttribute('data-theme')
+    } else {
+      document.documentElement.setAttribute('data-theme', theme)
+    }
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, theme)
+    } catch {
+      // Ignore localStorage quota or privacy mode errors.
+    }
+  }, [theme])
 
   const updateProfile = (group, value) => {
     setProfile((prev) => ({ ...prev, [group]: value }))
@@ -683,6 +715,18 @@ ${reportHtml}
             <div className="live-badge">
               <div className="live-dot"></div>
               AI Powered
+            </div>
+            <div className="theme-switcher" title="Switch theme">
+              {THEMES.map((t) => (
+                <button
+                  key={t.id}
+                  type="button"
+                  className={`theme-swatch ${theme === t.id ? 'active' : ''}`}
+                  style={{ '--swatch': t.swatch }}
+                  title={t.label}
+                  onClick={() => setTheme(t.id)}
+                />
+              ))}
             </div>
             <div className="header-date">{headerDate}</div>
           </div>
