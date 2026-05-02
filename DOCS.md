@@ -161,8 +161,8 @@ OPENAI_BASE_URL=https://openrouter.ai/api/v1
 npm run dev
 ```
 
-- Frontend (Vite): http://localhost:5173
-- API server: http://localhost:8787
+- Frontend (Vite): <http://localhost:5173>
+- API server: <http://localhost:8787>
 - All `/api/*` requests from the frontend are proxied by Vite to the API server
 
 **Production:**
@@ -281,13 +281,17 @@ MAX_HISTORY_ITEMS   = 20
 ### Key Functions
 
 #### `buildRequestKey(sector, profile, specificTicker, aiProvider)`
+
 Produces a deterministic JSON string key from the request parameters. Used to match incoming requests against cached history entries.
 
 #### `buildPrompt(sector, profile, specificTicker)`
+
 Constructs the full user-facing prompt sent to the AI. Includes sector, investment profile, and the complete required JSON schema. In single-ticker mode, instructs the AI to generate exactly 1 stock.
 
 #### `renderReportHtml(data, profile)`
+
 Takes the parsed AI JSON and `profile` and returns a fully self-contained HTML string. This string is set as `innerHTML` of the report section. All values are run through `sanitizeForHtml()` to prevent XSS. The function renders:
+
 - Report header (sector, date, profile metadata)
 - Live market snapshot (SPY, QQQ, VIX, TNX)
 - Macro indicator strip
@@ -296,22 +300,28 @@ Takes the parsed AI JSON and `profile` and returns a fully self-contained HTML s
 - Disclaimer
 
 #### `sanitizeForHtml(value)` / `escapeHtml(value)`
+
 Recursively escapes all string values in the report data before they are injected into the HTML string. Prevents any script injection from AI-generated content.
 
 #### `generateReport()`
+
 Main async function:
+
 1. Checks cache — loads from history if a matching non-expired entry exists
 2. Sets loading state, fires the API request
 3. Parses the response (JSON directly from `report` field, or extracted from raw text)
 4. Saves to history, renders the report
 
 #### `loadHistoryEntry(entry)` / `saveHistoryEntry(entry)` / `persistHistory(items)`
+
 History management. `persistHistory` writes to both React state and localStorage atomically.
 
 #### `exportReportPdf()`
+
 Creates a hidden `<iframe>` off-screen, writes the full report HTML + inlined light-mode CSS overrides + `@page { size: auto }` into it, and calls `iframe.contentWindow.print()` on load. The iframe removes itself after the print dialog is closed (`afterprint` event). No blank tab is opened.
 
 #### `shareOnWhatsApp()`
+
 Builds a plain-text summary string and opens `https://wa.me/?text=...` in a new tab.
 
 ---
@@ -430,6 +440,7 @@ if 'auto'    → requestAnthropic()
 ### `normalizeProviderName(value)`
 
 Maps loose provider strings to canonical values:
+
 - `'anthropic'` or `'claude'` → `'anthropic'`
 - `'openai'`, `'chatgpt'`, `'other'`, `'custom'`, `'openai-compatible'` → `'openai'`
 - `'auto'` → `'auto'`
@@ -444,6 +455,7 @@ Maps loose provider strings to canonical values:
 Returns server status and available providers.
 
 **Response:**
+
 ```json
 {
   "ok": true,
@@ -597,6 +609,7 @@ The AI must return exactly this structure. All fields are required:
 ```
 
 **Constraints enforced in the prompt:**
+
 - `buyPct + holdPct + sellPct` must sum to 100
 - `bearPct < currentPct < bullPct`
 - `revBars` is a 5-element array of 0–100 values (2021–2025 relative revenue trend)
@@ -611,16 +624,19 @@ The AI must return exactly this structure. All fields are required:
 Fetches real-time quotes for an array of ticker symbols.
 
 **Primary endpoint:**
+
 ```
 https://query1.finance.yahoo.com/v7/finance/quote?symbols={comma-separated}
 ```
 
 **Fallback (per-symbol, for any missing from the primary):**
+
 ```
 https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d
 ```
 
 **Per-quote data collected:**
+
 - `price` — `regularMarketPrice`
 - `changePct` — `regularMarketChangePercent`
 - `change` — `regularMarketChange`
@@ -633,6 +649,7 @@ https://query2.finance.yahoo.com/v8/finance/chart/{symbol}?interval=1m&range=1d
 ### Benchmark Tickers
 
 Always fetched alongside stock tickers:
+
 - `SPY` — S&P 500 ETF
 - `QQQ` — Nasdaq 100 ETF
 - `^VIX` — CBOE Volatility Index
