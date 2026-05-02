@@ -539,11 +539,7 @@ function App() {
 
   const exportReportPdf = () => {
     if (!reportHtml) return
-    const printWin = window.open('', '_blank', 'noopener,noreferrer')
-    if (!printWin) {
-      window.print()
-      return
-    }
+
     const styles = Array.from(document.styleSheets)
       .map((sheet) => {
         try {
@@ -553,13 +549,33 @@ function App() {
         }
       })
       .join('\n')
-    printWin.document.write(`<!DOCTYPE html>
+
+    // Use a hidden iframe so no blank tab appears.
+    const iframe = document.createElement('iframe')
+    iframe.setAttribute('title', 'print-frame')
+    iframe.style.cssText = 'position:fixed;top:-9999px;left:-9999px;width:1px;height:1px;border:none;visibility:hidden'
+    document.body.appendChild(iframe)
+
+    iframe.addEventListener('load', () => {
+      // Clean up after the print dialog is dismissed.
+      iframe.contentWindow.addEventListener('afterprint', () => {
+        if (document.body.contains(iframe)) document.body.removeChild(iframe)
+      })
+      iframe.contentWindow.focus()
+      iframe.contentWindow.print()
+    })
+
+    const iframeDoc = iframe.contentDocument || iframe.contentWindow.document
+    iframeDoc.open()
+    iframeDoc.write(`<!DOCTYPE html>
 <html>
 <head>
 <meta charset="utf-8">
 <title>Stock Research Report</title>
 <style>
 ${styles}
+/* Let the browser print dialog control orientation and zoom. */
+@page { size: auto; margin: 15mm; }
 :root {
   --ink: #fff;
   --ink2: #f5f5f5;
@@ -610,11 +626,7 @@ ${reportHtml}
 </div>
 </body>
 </html>`)
-    printWin.document.close()
-    printWin.onload = () => {
-      printWin.focus()
-      printWin.print()
-    }
+    iframeDoc.close()
   }
 
   const generateReport = async () => {
