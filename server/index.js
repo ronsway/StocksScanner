@@ -9,7 +9,7 @@ const app = express()
 const port = Number(process.env.PORT || 8787)
 const defaultAiProvider = String(process.env.AI_PROVIDER || 'anthropic').toLowerCase()
 const anthropicApiKey = process.env.ANTHROPIC_API_KEY
-const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-sonnet-4-20250514'
+const anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-sonnet-5-5'
 const openAiApiKey = process.env.OPENAI_API_KEY
 const openAiModel = process.env.OPENAI_MODEL || 'gpt-4.1-mini'
 const openAiBaseUrl = (process.env.OPENAI_BASE_URL || 'https://api.openai.com/v1').replace(/\/$/, '')
@@ -269,9 +269,9 @@ async function requestAnthropic(prompt, houseName) {
 
   const modelsToTry = [...new Set([
     anthropicModel,
-    'claude-sonnet-4-20250514',
-    'claude-3-7-sonnet-latest',
-    'claude-3-5-sonnet-latest',
+    'claude-sonnet-5-5',
+    'claude-opus-5-5',
+    'claude-haiku-5-5',
   ])]
 
   let response = null
@@ -285,11 +285,13 @@ async function requestAnthropic(prompt, houseName) {
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': anthropicApiKey,
-        'anthropic-version': '2023-06-01',
+        'anthropic-version': '2026-10-21',
       },
       body: JSON.stringify({
         model,
-        max_tokens: 4096,
+        // Thinking is on by default for current models and counts toward max_tokens,
+        // so 4096 truncated the JSON report.
+        max_tokens: 16000,
         system: buildSystemPrompt(houseName),
         messages: [{ role: 'user', content: prompt }],
       }),
@@ -298,10 +300,31 @@ async function requestAnthropic(prompt, houseName) {
     payload = await response.json().catch(() => ({}))
 
     if (response.ok) {
+      if (payload?.stop_reason === 'refusal') {
+        return {
+          ok: false,
+          status: 422,
+          error: `Claude declined this request${payload?.stop_details?.category ? ` (${payload.stop_details.category})` : ''}.`,
+          provider: 'anthropic',
+          modelTried: usedModel,
+        }
+      }
+      if (payload?.stop_reason === 'max_tokens') {
+        return {
+          ok: false,
+          status: 502,
+          error: 'Claude response was truncated (max_tokens reached). Try a narrower request.',
+          provider: 'anthropic',
+          modelTried: usedModel,
+        }
+      }
       return {
         ok: true,
         status: response.status,
-        raw: payload?.content?.[0]?.text || '',
+        raw: (Array.isArray(payload?.content) ? payload.content : [])
+          .filter((b) => b?.type === 'text')
+          .map((b) => b.text ?? '')
+          .join(''),
         content: payload?.content || [],
         provider: 'anthropic',
         modelUsed: usedModel,
@@ -309,7 +332,8 @@ async function requestAnthropic(prompt, houseName) {
     }
 
     const upstreamMessage = payload?.error?.message || payload?.error || ''
-    if (!(response.status === 400 && isLikelyModelError(String(upstreamMessage)))) {
+    const isModelStatus = response.status === 400 || response.status === 404
+    if (!(isModelStatus && isLikelyModelError(String(upstreamMessage)))) {
       break
     }
   }
